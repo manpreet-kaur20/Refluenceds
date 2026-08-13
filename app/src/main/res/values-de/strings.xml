@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Refluenceds</string>
+    <string name="nav_home">Startseite</string>
+    <string name="nav_social">Entdecken</string>
+    <string name="nav_campaigns">Kampagnen</string>
+    <string name="nav_inbox">Posteingang</string>
+    <string name="nav_earnings">Einnahmen</string>
+
+    <string name="settings">Einstellungen</string>
+    <string name="theme">Design</string>
+    <string name="light_mode">Hell</string>
+    <string name="dark_mode">Dunkel</string>
+    <string name="system_mode">System</string>
+    <string name="language_preference">Spracheinstellung</string>
+    <string name="english">Englisch</string>
+    <string name="german">Deutsch</string>
+    <string name="log_out">Abmelden</string>
+    <string name="delete_account">Konto löschen</string>
+</resources>

@@ -1,0 +1,386 @@
+package com.example.refluenceds.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    sessionManager: com.example.refluenceds.data.local.SessionManager? = null,
+    onBack: () -> Unit,
+    onLogout: () -> Unit,
+    onNavigateToLanguage: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToPushNotifications: () -> Unit = {},
+    onNavigateToEmailNotifications: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {}
+) {
+    var selectedTheme by remember { mutableStateOf(sessionManager?.getTheme() ?: "System") }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        containerColor = Color.White,
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Settings",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color(0xFF1D1B36)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color(0xFF1D1B36)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.White
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 32.dp)
+        ) {
+            // Theme Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = "Theme",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color(0xFF1D1B36)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Theme Segmented Control
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFFF8F8FC),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEEEF8))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        ThemeOptionPill(
+                            label = "Light",
+                            icon = Icons.Outlined.WbSunny,
+                            isSelected = selectedTheme == "Light",
+                            onClick = {
+                                selectedTheme = "Light"
+                                sessionManager?.setTheme("Light")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeOptionPill(
+                            label = "Dark",
+                            icon = Icons.Outlined.NightsStay,
+                            isSelected = selectedTheme == "Dark",
+                            onClick = {
+                                selectedTheme = "Dark"
+                                sessionManager?.setTheme("Dark")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeOptionPill(
+                            label = "System",
+                            icon = Icons.Outlined.CropFree,
+                            isSelected = selectedTheme == "System",
+                            onClick = {
+                                selectedTheme = "System"
+                                sessionManager?.setTheme("System")
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = Color(0xFFF0F0F6))
+
+            // Account Section
+            SettingsSectionHeader(icon = Icons.Outlined.Lightbulb, title = "Account")
+            SettingsClickableRow(title = "Edit Profile", onClick = { onNavigateToEditProfile() })
+            HorizontalDivider(color = Color(0xFFF6F6FA), modifier = Modifier.padding(horizontal = 20.dp))
+            SettingsClickableRow(title = "Language Preference", trailingText = "English", onClick = { onNavigateToLanguage() })
+
+            HorizontalDivider(color = Color(0xFFF0F0F6))
+
+            // Sign in & Security Section
+            SettingsSectionHeader(icon = Icons.Outlined.Lock, title = "Sign in & Security")
+            SettingsClickableRow(title = "Change password", onClick = { onNavigateToChangePassword() })
+
+            HorizontalDivider(color = Color(0xFFF0F0F6))
+
+            // Communications Section
+            SettingsSectionHeader(icon = Icons.Outlined.ChatBubbleOutline, title = "Communications")
+            SettingsClickableRow(title = "Push notifications", onClick = { onNavigateToPushNotifications() })
+            HorizontalDivider(color = Color(0xFFF6F6FA), modifier = Modifier.padding(horizontal = 20.dp))
+            SettingsClickableRow(title = "Email notifications", onClick = { onNavigateToEmailNotifications() })
+
+            HorizontalDivider(color = Color(0xFFF0F0F6))
+
+            // Log out Section
+            Spacer(modifier = Modifier.height(16.dp))
+            SettingsClickableRow(
+                title = "Log out",
+                titleColor = Color(0xFF1D1B36),
+                titleWeight = FontWeight.Bold,
+                onClick = { showLogoutDialog = true }
+            )
+
+            HorizontalDivider(color = Color(0xFFF0F0F6))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Footer Links Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "FAQ",
+                    fontSize = 14.sp,
+                    color = Color(0xFF4B4FE4),
+                    modifier = Modifier.clickable { }
+                )
+                Text(
+                    text = "Privacy Policy",
+                    fontSize = 14.sp,
+                    color = Color(0xFF4B4FE4),
+                    modifier = Modifier.clickable { }
+                )
+                Text(
+                    text = "Terms and Conditions",
+                    fontSize = 14.sp,
+                    color = Color(0xFF4B4FE4),
+                    modifier = Modifier.clickable { }
+                )
+                Text(
+                    text = "Contact us",
+                    fontSize = 14.sp,
+                    color = Color(0xFF4B4FE4),
+                    modifier = Modifier.clickable { }
+                )
+                Text(
+                    text = "Delete account",
+                    fontSize = 14.sp,
+                    color = Color(0xFFFA5252),
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable { showDeleteDialog = true }
+                )
+            }
+        }
+    }
+
+    // Logout Confirmation Dialog
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text("Log Out", fontWeight = FontWeight.Bold, color = Color(0xFF1D1B36))
+            },
+            text = {
+                Text("Are you sure you want to log out?", color = Color(0xFF5A5A72), fontSize = 14.sp)
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    }
+                ) {
+                    Text("Log Out", color = Color(0xFF4B4FE4), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Delete Account Confirmation Dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = {
+                Text("Delete Account", fontWeight = FontWeight.Bold, color = Color(0xFFFA5252))
+            },
+            text = {
+                Text(
+                    "Are you sure you want to delete your account? All your data will be permanently cleared.",
+                    color = Color(0xFF5A5A72),
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onLogout()
+                    }
+                ) {
+                    Text("Delete", color = Color(0xFFFA5252), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+}
+
+// ── Theme Option Pill Component ───────────────────────────────────────────────
+
+@Composable
+fun ThemeOptionPill(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        color = if (isSelected) Color(0xFF4B4FE4) else Color.Transparent,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) Color.White else Color(0xFF4B4FE4),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) Color.White else Color(0xFF4B4FE4)
+            )
+        }
+    }
+}
+
+// ── Settings Section Header Component ─────────────────────────────────────────
+
+@Composable
+fun SettingsSectionHeader(icon: ImageVector, title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color(0xFFC03A82),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF7A7A90)
+        )
+    }
+}
+
+// ── Settings Clickable Row Component ──────────────────────────────────────────
+
+@Composable
+fun SettingsClickableRow(
+    title: String,
+    trailingText: String? = null,
+    titleColor: Color = Color(0xFF1D1B36),
+    titleWeight: FontWeight = FontWeight.Bold,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            fontWeight = titleWeight,
+            color = titleColor
+        )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (trailingText != null) {
+                Text(
+                    text = trailingText,
+                    fontSize = 13.sp,
+                    color = Color(0xFF7A7A90)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = Color(0xFF1D1B36),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}

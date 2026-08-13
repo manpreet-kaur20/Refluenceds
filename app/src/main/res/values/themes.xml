@@ -1,0 +1,4 @@
+<resources>
+
+    <style name="Theme.Refluenceds" parent="Theme.MaterialComponents.Light" />
+</resources>

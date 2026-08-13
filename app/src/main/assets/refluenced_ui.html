@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Refluenced – Influencer Discovery</title>
+  <meta name="description" content="Discover top influencers, manage collections, and explore brand collaborations on Refluenced." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --brand-blue:   #3D5AF1;
+      --brand-purple: #7C3AED;
+      --brand-pink:   #EC4899;
+      --grad-main:    linear-gradient(135deg, #3D5AF1 0%, #7C3AED 50%, #EC4899 100%);
+      --grad-btn:     linear-gradient(90deg, #7C3AED 0%, #EC4899 100%);
+      --bg:           #F5F6FA;
+      --surface:      #FFFFFF;
+      --text-primary: #1A1D2E;
+      --text-secondary:#6B7080;
+      --text-muted:   #9CA3AF;
+      --border:       #E5E7EB;
+      --overlay:      rgba(0,0,0,0.45);
+      --card-radius:  16px;
+      --pill-radius:  50px;
+      --font:         'Inter', sans-serif;
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: var(--font);
+      background: linear-gradient(145deg, #1a1d2e 0%, #2d1b4e 50%, #1a1d2e 100%);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    /* Phone Shell */
+    .phone {
+      width: 360px;
+      min-height: 760px;
+      background: var(--bg);
+      border-radius: 44px;
+      box-shadow:
+        0 0 0 2px #2a2a2a,
+        0 0 0 10px #111,
+        0 32px 80px rgba(0,0,0,0.6),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      height: 42px;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+    .status-icons { display: flex; gap: 6px; align-items: center; }
+    .battery-wrap { display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; }
+    .battery-box { width: 22px; height: 11px; border: 1.5px solid currentColor; border-radius: 2.5px; position: relative; padding: 1.5px; }
+    .battery-box::after { content:''; position:absolute; right:-4px; top:50%; transform:translateY(-50%); width:2.5px; height:5px; background:currentColor; border-radius:0 1px 1px 0; }
+    .battery-fill { height:100%; background:currentColor; border-radius:1px; }
+
+    /* Screen */
+    .screen { display:none; flex-direction:column; flex:1; overflow:hidden; }
+    .screen.active { display:flex; }
+
+    /* ══ SCREEN 1 – FEED ══ */
+    #s-feed { background: var(--bg); }
+
+    .feed-nav {
+      background: var(--surface);
+      padding: 12px 16px 0;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .tabs { display:flex; gap:0; overflow-x:auto; scrollbar-width:none; }
+    .tabs::-webkit-scrollbar { display:none; }
+
+    .tab {
+      display:flex; align-items:center; gap:5px;
+      padding:8px 14px; cursor:pointer; white-space:nowrap;
+      font-size:13px; font-weight:500; color:var(--text-secondary);
+      border-bottom:2.5px solid transparent; transition:all .2s;
+      user-select:none;
+    }
+    .tab.active { color:var(--brand-blue); border-bottom-color:var(--brand-blue); font-weight:600; }
+    .tab svg { width:13px; height:13px; }
+
+    .tab-pill {
+      background: var(--brand-blue); color:#fff !important;
+      padding:7px 18px !important; border-radius:var(--pill-radius);
+      border-bottom:none !important; margin-bottom:8px; font-weight:600 !important;
+    }
+
+    .feed-scroll {
+      flex:1; overflow-y:auto; padding:12px; scrollbar-width:none;
+    }
+    .feed-scroll::-webkit-scrollbar { display:none; }
+
+    .masonry { columns:2; column-gap:10px; }
+
+    .card {
+      break-inside:avoid; margin-bottom:10px;
+      background:var(--surface); border-radius:var(--card-radius);
+      overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,0.07);
+      position:relative; cursor:pointer;
+      transition:transform .18s, box-shadow .18s;
+    }
+    .card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(0,0,0,0.13); }
+    .card:active { transform:scale(0.97); }
+
+    .card-img {
+      width:100%; display:block; object-fit:cover;
+    }
+    .card-img-tall  { height:220px; }
+    .card-img-short { height:175px; }
+
+    .card-txt {
+      position:absolute; top:10px; left:10px; right:10px;
+      font-size:11px; font-weight:700; color:#fff;
+      text-shadow:0 1px 6px rgba(0,0,0,.6); line-height:1.3;
+    }
+    .card-stats {
+      position:absolute; bottom:48px; left:0; right:0;
+      display:flex; justify-content:flex-end; padding:0 8px;
+      gap:10px;
+    }
+    .card-stat {
+      display:flex; align-items:center; gap:3px;
+      background:rgba(0,0,0,.4); backdrop-filter:blur(4px);
+      border-radius:8px; padding:3px 7px;
+      font-size:10px; color:#fff; font-weight:600;
+    }
+    .card-stat svg { width:10px; height:10px; }
+
+    .card-footer {
+      padding:8px 10px;
+      display:flex; align-items:center; gap:5px;
+    }
+    .avatar {
+      width:26px; height:26px; border-radius:50%;
+      object-fit:cover; border:2px solid var(--surface);
+    }
+    .brand-badge {
+      width:22px; height:22px; border-radius:50%;
+      border:2px solid var(--surface);
+      display:flex; align-items:center; justify-content:center;
+      margin-left:-5px; overflow:hidden; flex-shrink:0;
+    }
+    .plus-dot {
+      width:16px; height:16px; border-radius:50%;
+      background:var(--grad-main);
+      display:flex; align-items:center; justify-content:center;
+      font-size:10px; color:#fff; font-weight:700;
+      margin-left:3px; flex-shrink:0;
+    }
+    .icon-btn {
+      width:28px; height:28px; border-radius:50%;
+      border:1.5px solid var(--border); background:var(--surface);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; flex-shrink:0; transition:all .15s;
+    }
+    .icon-btn:hover { background:#EEF0FF; border-color:var(--brand-blue); }
+    .icon-btn svg { width:12px; height:12px; }
+    .icon-btn.saved svg { stroke:var(--brand-blue); fill:var(--brand-blue); }
+    .ml-auto { margin-left:auto; }
+
+    /* Context Menu */
+    .ctx-backdrop {
+      position:absolute; inset:0; z-index:500;
+      background:rgba(0,0,0,.42);
+      animation:fadeIn .2s;
+      border-radius:44px;
+    }
+    .ctx-menu {
+      position:absolute; z-index:510;
+      left:50%; top:36%; transform:translateX(-50%);
+      background:var(--surface); border-radius:18px;
+      box-shadow:0 10px 50px rgba(0,0,0,.25);
+      min-width:220px; padding:5px 0;
+      animation:pop .18s cubic-bezier(.34,1.56,.64,1);
+    }
+    .ctx-title { font-size:13px; font-weight:700; color:var(--text-primary); padding:10px 18px 8px; border-bottom:1px solid var(--border); }
+    .ctx-item {
+      display:flex; align-items:center; gap:10px;
+      padding:13px 18px; font-size:14px; font-weight:500; color:var(--text-primary);
+      cursor:pointer; transition:background .12s;
+    }
+    .ctx-item:hover { background:#F5F6FA; }
+    .ctx-item svg { width:15px; height:15px; color:var(--text-secondary); }
+    .ctx-item.danger { color:#E53E3E; }
+    .ctx-item.danger svg { color:#E53E3E; }
+
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes pop { from{opacity:0;transform:translateX(-50%) scale(.88)} to{opacity:1;transform:translateX(-50%) scale(1)} }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      height:66px; background:var(--surface);
+      border-top:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-around;
+      flex-shrink:0;
+    }
+    .nav-item {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:8px 18px; border-radius:12px; cursor:pointer; transition:all .15s;
+    }
+    .nav-item svg { width:22px; height:22px; stroke:var(--text-muted); fill:none; stroke-width:2; }
+    .nav-item.active svg { stroke:var(--brand-blue); }
+    .nav-avatar { width:28px; height:28px; border-radius:50%; object-fit:cover; border:2px solid var(--brand-blue); }
+
+    /* ══ SCREEN 2 – REPORT ══ */
+    #phone-report { background:#1a1a2e; justify-content:flex-end; }
+    .blurred-bg { position:absolute; inset:0; }
+    .blurred-bg img { width:100%; height:100%; object-fit:cover; filter:blur(14px) brightness(.4); }
+
+    .sheet {
+      position:relative; z-index:10;
+      background:var(--surface); border-radius:28px 28px 0 0;
+      max-height:88%; overflow-y:auto; scrollbar-width:none;
+      animation:slideUp .3s cubic-bezier(.34,1.1,.64,1);
+    }
+    .sheet::-webkit-scrollbar { display:none; }
+
+    /* mini tab bar above sheet */
+    .sheet-tabbar {
+      position:absolute; top:0; left:0; right:0; z-index:9;
+      background:rgba(255,255,255,.88); backdrop-filter:blur(12px);
+      padding:8px 14px 0; display:flex; gap:0;
+    }
+
+    @keyframes slideUp {
+      from { transform:translateY(80px); opacity:0; }
+      to   { transform:translateY(0);    opacity:1; }
+    }
+    .sheet-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:12px auto 0; }
+    .sheet-header { padding:14px 20px 10px; display:flex; align-items:center; justify-content:space-between; }
+    .sheet-header h2 { font-size:17px; font-weight:700; }
+    .close-x {
+      width:30px; height:30px; border-radius:50%; background:var(--bg); border:none;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      font-size:16px; color:var(--text-secondary); transition:background .15s;
+    }
+    .close-x:hover { background:var(--border); }
+
+    .report-preview {
+      width:calc(100% - 40px); margin:0 20px;
+      border-radius:16px; height:210px; overflow:hidden; position:relative;
+    }
+    .report-preview img { width:100%; height:100%; object-fit:cover; object-position:top; }
+    .rp-overlay { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,.35), transparent 45%); }
+    .rp-text { position:absolute; top:14px; left:14px; font-size:11px; font-weight:800; color:#fff; text-shadow:0 1px 6px rgba(0,0,0,.6); }
+    .rp-badge {
+      position:absolute; bottom:14px; right:14px;
+      background:var(--brand-purple); color:#fff; border-radius:50%;
+      width:72px; height:72px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      font-size:9px; font-weight:700; text-align:center; line-height:1.35;
+    }
+    .rp-badge strong { font-size:13px; }
+
+    .chips { display:flex; flex-wrap:wrap; gap:8px; padding:14px 20px 4px; }
+    .chip {
+      padding:7px 14px; border-radius:var(--pill-radius);
+      border:1.5px solid var(--brand-blue); color:var(--brand-blue);
+      font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; user-select:none;
+    }
+    .chip:hover, .chip.on { background:var(--brand-blue); color:#fff; }
+
+    .comment-box {
+      margin:10px 20px;
+      border:1.5px solid var(--border); border-radius:12px; overflow:hidden;
+    }
+    .comment-box textarea {
+      width:100%; height:88px; border:none; outline:none; resize:none;
+      padding:12px; font-family:var(--font); font-size:14px;
+      color:var(--text-primary); background:transparent;
+    }
+    .comment-box textarea::placeholder { color:var(--text-muted); }
+
+    .submit-btn {
+      margin:10px 20px 22px; height:54px; width:calc(100% - 40px);
+      border-radius:var(--pill-radius); border:none;
+      background:var(--grad-btn); color:#fff; font-size:16px; font-weight:700;
+      cursor:pointer; transition:opacity .15s, transform .1s;
+    }
+    .submit-btn:hover { opacity:.9; }
+    .submit-btn:active { transform:scale(.98); }
+
+    /* ══ SCREEN 3 – BRAND GONE ══ */
+    #phone-brand { background:#F0F1FA; }
+    .brand-header { padding:14px 20px; background:#F0F1FA; display:flex; align-items:center; }
+    .back-btn {
+      width:36px; height:36px; border-radius:50%; background:none; border:none;
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      color:var(--text-primary); transition:background .15s;
+    }
+    .back-btn:hover { background:rgba(0,0,0,.06); }
+    .back-btn svg { width:20px; height:20px; }
+
+    .brand-body {
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:0 40px; text-align:center;
+    }
+    .brand-icon-ring {
+      width:144px; height:144px; border-radius:50%;
+      background:linear-gradient(135deg,#EEF0FF,#F0E8FF);
+      display:flex; align-items:center; justify-content:center;
+      margin-bottom:30px;
+      box-shadow:0 8px 36px rgba(124,58,237,.14);
+      animation:float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform:translateY(0); }
+      50%      { transform:translateY(-10px); }
+    }
+    .brand-icon-ring svg { width:72px; height:72px; }
+
+    .brand-title {
+      font-size:26px; font-weight:800; margin-bottom:14px;
+      background:var(--grad-main); -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent; background-clip:text; line-height:1.2;
+    }
+    .brand-sub {
+      font-size:14px; color:var(--text-secondary); line-height:1.65; max-width:250px;
+    }
+
+    .goback-btn {
+      margin:28px 20px 8px; height:56px; width:calc(100% - 40px);
+      border-radius:var(--pill-radius); border:none;
+      background:var(--grad-btn); color:#fff; font-size:16px; font-weight:700;
+      cursor:pointer; transition:opacity .15s, transform .12s; flex-shrink:0;
+    }
+    .goback-btn:hover { opacity:.9; }
+    .goback-btn:active { transform:scale(.98); }
+
+    /* ── Labels ── */
+    .phone-wrap { display:flex; flex-direction:column; align-items:center; }
+    .label {
+      font-family:var(--font); font-size:11px; font-weight:700;
+      color:rgba(255,255,255,.5); letter-spacing:1px; text-transform:uppercase;
+      margin-bottom:10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ PHONE 1: FEED ═══════════════ -->
+<div class="phone-wrap">
+  <p class="label">📱 Feed Screen</p>
+  <div class="phone" id="phone-feed">
+
+    <div class="status-bar">
+      <span>11:10</span>
+      <div class="status-icons">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+        <div class="battery-wrap">
+          <div class="battery-box"><div class="battery-fill" style="width:78%"></div></div>
+          89
+        </div>
+      </div>
+    </div>
+
+    <div class="screen active" id="s-feed">
+
+      <div class="feed-nav">
+        <div class="tabs" role="tablist">
+          <div class="tab tab-pill active" role="tab" onclick="pickTab(this)">All</div>
+          <div class="tab" role="tab" onclick="pickTab(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+            Collections
+          </div>
+          <div class="tab" role="tab" onclick="pickTab(this)">Fashion</div>
+          <div class="tab" role="tab" onclick="pickTab(this)">Beauty</div>
+          <div class="tab" role="tab" onclick="pickTab(this)">Travel</div>
+        </div>
+      </div>
+
+      <div class="feed-scroll">
+        <div class="masonry">
+
+          <!-- Card A -->
+          <div class="card">
+            <div style="position:relative">
+              <img class="card-img card-img-tall" src="influencer_post_1.jpg" alt="Finance influencer" onerror="this.style.background='linear-gradient(135deg,#667eea,#764ba2)';this.removeAttribute('src')" />
+              <div class="card-txt">offizielle Geldleistung in der Schweiz</div>
+              <div class="card-stats">
+                <div class="card-stat">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>64
+                </div>
+                <div class="card-stat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>16
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <img class="avatar" src="https://i.pravatar.cc/60?img=5" alt="influencer" />
+              <div class="plus-dot">+</div>
+              <div class="brand-badge" style="background:#fff;border-color:#ddd;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#1A1A1A"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.53a8.2 8.2 0 004.79 1.52V6.6a4.85 4.85 0 01-1.02-.09z"/></svg>
+              </div>
+              <div class="icon-btn ml-auto" id="bm-a" onclick="toggleBM('bm-a')" aria-label="Save">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="icon-btn" onclick="openCtx(event)" aria-label="More">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card B -->
+          <div class="card">
+            <div style="position:relative">
+              <img class="card-img card-img-short" src="influencer_post_2.jpg" alt="Fashion influencer" onerror="this.style.background='linear-gradient(135deg,#f093fb,#f5576c)';this.removeAttribute('src')" />
+            </div>
+            <div class="card-footer">
+              <img class="avatar" src="https://i.pravatar.cc/60?img=12" alt="influencer" />
+              <div class="plus-dot">+</div>
+              <div class="brand-badge" style="background:#FFD800;">
+                <span style="font-size:7px;font-weight:900;color:#0050AA;line-height:1">Lidl</span>
+              </div>
+              <div class="icon-btn ml-auto" id="bm-b" onclick="toggleBM('bm-b')" aria-label="Save">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="icon-btn" onclick="openCtx(event)" aria-label="More">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card C -->
+          <div class="card">
+            <div style="position:relative">
+              <img class="card-img card-img-tall" src="influencer_post_3.jpg" alt="Lifestyle influencer" onerror="this.style.background='linear-gradient(135deg,#a18cd1,#fbc2eb)';this.removeAttribute('src')" />
+              <div style="position:absolute;bottom:54px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:900;color:#fff;letter-spacing:1.5px;white-space:nowrap;">PIXEL</div>
+            </div>
+            <div class="card-footer">
+              <img class="avatar" src="https://i.pravatar.cc/60?img=23" alt="influencer" />
+              <div class="plus-dot">+</div>
+              <div class="brand-badge" style="background:var(--grad-main);">
+                <span style="font-size:9px;font-weight:900;color:#fff">R</span>
+              </div>
+              <div class="icon-btn ml-auto" id="bm-c" onclick="toggleBM('bm-c')" aria-label="Save">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="icon-btn" onclick="openCtx(event)" aria-label="More">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bottom Nav -->
+      <div class="bottom-nav">
+        <div class="nav-item" onclick="pickNav(this)">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div class="nav-item active" onclick="pickNav(this)">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <div class="nav-item" onclick="pickNav(this)">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+        <div class="nav-item" onclick="pickNav(this)">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div class="nav-item" onclick="pickNav(this)">
+          <img class="nav-avatar" src="https://i.pravatar.cc/60?img=31" alt="Profile" />
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+
+  <!-- Context Menu lives at phone level so overflow:hidden on screen doesn't clip it -->
+  <div class="ctx-backdrop" id="ctx-bd" style="display:none" onclick="closeCtx()"></div>
+  <div class="ctx-menu" id="ctx-menu" style="display:none">
+    <div class="ctx-title">Options</div>
+    <div class="ctx-item" onclick="closeCtx()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+      View Influencer
+    </div>
+    <div class="ctx-item" onclick="closeCtx()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      View Brand
+    </div>
+    <div class="ctx-item danger" onclick="closeCtx()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      Report Content
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ═══════════════ PHONE 2: REPORT ═══════════════ -->
+<div class="phone-wrap">
+  <p class="label">🚩 Report Content</p>
+  <div class="phone" id="phone-report" style="background:#0d0d1a;">
+
+    <!-- Blurred BG -->
+    <div class="blurred-bg">
+      <img src="influencer_post_1.jpg" alt="" />
+    </div>
+
+    <!-- Mini tab bar -->
+    <div class="sheet-tabbar">
+      <div class="tab tab-pill active" style="font-size:12px;padding:5px 14px;margin-bottom:6px;">All</div>
+      <div class="tab" style="font-size:12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+        Collections
+      </div>
+      <div class="tab" style="font-size:12px;">Fashion</div>
+      <div class="tab" style="font-size:12px;">Beauty</div>
+    </div>
+
+    <!-- Sheet -->
+    <div class="sheet" style="margin-top:auto;">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h2>Report Content</h2>
+        <button class="close-x" id="rpt-close" onclick="submitRpt()">✕</button>
+      </div>
+
+      <div class="report-preview">
+        <img src="influencer_post_1.jpg" alt="Content being reported" onerror="this.style.background='linear-gradient(135deg,#667eea,#764ba2)'" />
+        <div class="rp-overlay"></div>
+        <div class="rp-text">offizielle Geldleistung in</div>
+        <div class="rp-badge">
+          <span>Bis zu</span>
+          <strong>CHF 2'016</strong>
+          <span>pro Monat</span>
+        </div>
+      </div>
+
+      <div class="chips">
+        <div class="chip" onclick="pickChip(this)">Offensive material</div>
+        <div class="chip on" onclick="pickChip(this)">False marketing</div>
+        <div class="chip" onclick="pickChip(this)">Other</div>
+      </div>
+
+      <div class="comment-box">
+        <textarea placeholder="Additional comments…" aria-label="Additional comments"></textarea>
+      </div>
+
+      <button class="submit-btn" id="rpt-submit" onclick="submitRpt()">Submit</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════ PHONE 3: BRAND GONE ═══════════════ -->
+<div class="phone-wrap">
+  <p class="label">🏢 Brand Gone</p>
+  <div class="phone" id="phone-brand" style="background:#F0F1FA;">
+
+    <div class="status-bar" style="background:#F0F1FA;">
+      <span>11:10</span>
+      <div class="status-icons" style="color:#E53E3E;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1D2E" stroke-width="2"><path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+        <div class="battery-wrap" style="color:#E53E3E;">
+          <div class="battery-box"><div class="battery-fill" style="width:32%"></div></div>
+          35
+        </div>
+      </div>
+    </div>
+
+    <div class="screen active" id="s-brand-gone" style="background:#F0F1FA;">
+
+      <div class="brand-header">
+        <button class="back-btn" aria-label="Go back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+        </button>
+      </div>
+
+      <div class="brand-body">
+        <div class="brand-icon-ring">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" width="72" height="72">
+            <defs>
+              <linearGradient id="ig" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%"   style="stop-color:#3D5AF1"/>
+                <stop offset="50%"  style="stop-color:#7C3AED"/>
+                <stop offset="100%" style="stop-color:#EC4899"/>
+              </linearGradient>
+            </defs>
+            <rect x="18" y="18" width="20" height="38" rx="2" stroke="url(#ig)" stroke-width="2.8" fill="none"/>
+            <rect x="38" y="28" width="12" height="28" rx="2" stroke="url(#ig)" stroke-width="2.8" fill="none"/>
+            <rect x="6"  y="32" width="12" height="24" rx="2" stroke="url(#ig)" stroke-width="2.8" fill="none"/>
+            <rect x="22" y="24" width="5" height="5" rx="1" fill="url(#ig)" opacity=".75"/>
+            <rect x="31" y="24" width="5" height="5" rx="1" fill="url(#ig)" opacity=".75"/>
+            <rect x="22" y="33" width="5" height="5" rx="1" fill="url(#ig)" opacity=".75"/>
+            <rect x="31" y="33" width="5" height="5" rx="1" fill="url(#ig)" opacity=".75"/>
+            <rect x="22" y="42" width="5" height="5" rx="1" fill="url(#ig)" opacity=".75"/>
+            <rect x="40" y="34" width="4" height="4" rx="1" fill="url(#ig)" opacity=".75"/>
+            <rect x="40" y="42" width="4" height="4" rx="1" fill="url(#ig)" opacity=".75"/>
+          </svg>
+        </div>
+
+        <h1 class="brand-title">This brand is gone</h1>
+        <p class="brand-sub">This brand is no longer available or the link isn't working anymore.</p>
+      </div>
+
+      <button class="goback-btn" id="goback-btn">Go back</button>
+
+      <div class="bottom-nav" style="background:#F0F1FA; border-top-color:#E5E7EB; margin-top:auto;">
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="var(--brand-blue)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+        <div class="nav-item"><img class="nav-avatar" src="https://i.pravatar.cc/60?img=31" alt="Profile" /></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ── Tab ── */
+  function pickTab(el) {
+    const tabs = el.closest('.tabs').querySelectorAll('.tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  /* ── Nav ── */
+  function pickNav(el) {
+    el.closest('.bottom-nav').querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  /* ── Bookmark ── */
+  function toggleBM(id) {
+    const btn = document.getElementById(id);
+    btn.classList.toggle('saved');
+    const svg = btn.querySelector('svg');
+    if (btn.classList.contains('saved')) {
+      svg.setAttribute('fill', 'var(--brand-blue)');
+      svg.setAttribute('stroke', 'var(--brand-blue)');
+    } else {
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+    }
+  }
+
+  /* ── Context Menu ── */
+  function openCtx(e) {
+    e.stopPropagation();
+    const bd   = document.getElementById('ctx-bd');
+    const menu = document.getElementById('ctx-menu');
+    // Reset animation so it re-plays each open
+    menu.style.animation = 'none';
+    requestAnimationFrame(() => {
+      menu.style.animation = '';
+      bd.style.display   = 'block';
+      menu.style.display = 'block';
+    });
+  }
+  function closeCtx() {
+    document.getElementById('ctx-bd').style.display   = 'none';
+    document.getElementById('ctx-menu').style.display = 'none';
+  }
+
+  /* ── Chips ── */
+  function pickChip(el) { el.classList.toggle('on'); }
+
+  /* ── Submit ── */
+  function submitRpt() {
+    const btn = document.getElementById('rpt-submit');
+    btn.textContent = '✓ Submitted!';
+    btn.style.background = 'linear-gradient(90deg,#10B981,#059669)';
+    setTimeout(() => {
+      btn.textContent = 'Submit';
+      btn.style.background = '';
+    }, 2200);
+  }
+</script>
+</body>
+</html>
