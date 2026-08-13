@@ -881,7 +881,7 @@ fun InterestsScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> 
         ) {
             items(industries) { industry ->
                 val imageRes = when (industry) {
-                    "Beauty" -> R.drawable.beauty
+                    "Beauty" -> R.drawable.beautiful
                     "Fashion" -> R.drawable.fashion
                     "Gastronomy" -> R.drawable.gastronomy
                     "Food & Drink" -> R.drawable.food_drink

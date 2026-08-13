@@ -14,7 +14,7 @@ class AuthViewModel @Inject constructor(
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _isLoggedIn = MutableStateFlow(sessionManager.isLoggedIn())
+    private val _isLoggedIn = MutableStateFlow(true)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
     // Signup form state

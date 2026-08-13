@@ -47,12 +47,36 @@ fun MyBrandsScreen(onBack: () -> Unit) {
     }
 
     val brands = listOf(
-        BrandData("Ricardo AG", "FASHION • JEWELRY •\nSUSTAINABILITY • HOME", "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.ricardo_ag_logo}"),
-        BrandData("SunIce Festival", "EVENTS • LIFESTYLE", "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.sunice_festival_logo}"),
-        BrandData("Liebeskind Berlin", "FASHION • LIFESTYLE", "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.liebeskind_berlin_logo}"),
-        BrandData("IONIQ Skincare", "BEAUTY • TECHNOLOGY • LIFESTYLE", "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.uniq_skincare_logo}"),
-        BrandData("UND GRETEL", "", "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.und_gretel_logo}"),
-        BrandData("Kapten & Son GmbH", "", "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.kapten_son_logo}")
+        BrandData(
+            name = "Refluenced AG",
+            categories = "BEAUTY • FASHION • GASTRONOMY\n• FOOD & DRINK • TRAVEL",
+            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.refluenced_ag_logo}"
+        ),
+        BrandData(
+            name = "Metalli Zug",
+            categories = "BEAUTY • FASHION • GASTRONOMY\n• FOOD & DRINK • JEWELRY",
+            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.metalli_zug_logo}"
+        ),
+        BrandData(
+            name = "Neuwiesen",
+            categories = "BEAUTY • FASHION • GASTRONOMY\n• FOOD & DRINK • SPORTS",
+            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.neuwiesen_logo}"
+        ),
+        BrandData(
+            name = "Filabé of Switzerland ..",
+            categories = "BEAUTY • FASHION • FOOD & DRINK\n• TRAVEL • SPORTS",
+            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.filabe_logo}"
+        ),
+        BrandData(
+            name = "eau&moi",
+            categories = "BEAUTY • FASHION • FOOD & DRINK\n• LIFESTYLE",
+            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.eau_moi_logo}"
+        ),
+        BrandData(
+            name = "Oatsome GmbH",
+            categories = "BEAUTY • FASHION • FOOD & DRINK\n• LIFESTYLE",
+            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.oatsome_logo}"
+        )
     )
 
     val filteredBrands = brands.filter { it.name.contains(searchQuery, ignoreCase = true) }
@@ -72,11 +96,16 @@ fun MyBrandsScreen(onBack: () -> Unit) {
                     IconButton(
                         onClick = { showFilterSheet = true },
                         modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(40.dp)
-                            .background(Color(0xFFF1F1F1), CircleShape)
+                            .padding(end = 12.dp)
+                            .size(38.dp)
+                            .background(Color(0xFF4B4FE4), CircleShape)
                     ) {
-                        Icon(Icons.Default.Tune, contentDescription = "Filter", tint = Color.Gray)
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Filter",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
@@ -231,7 +260,9 @@ fun BrandGridCard(brand: BrandData) {
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F1F1))
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AsyncImage(
@@ -243,27 +274,41 @@ fun BrandGridCard(brand: BrandData) {
                 contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(brand.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, textAlign = TextAlign.Center)
+            Text(
+                text = brand.name,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                brand.categories,
-                fontSize = 9.sp,
+                text = brand.categories,
+                fontSize = 8.5.sp,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
-                lineHeight = 12.sp,
-                minLines = 2
+                lineHeight = 11.5.sp,
+                minLines = 2,
+                maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = GradientStart),
-                contentPadding = PaddingValues(0.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B4FE4)),
+                contentPadding = PaddingValues(vertical = 0.dp)
             ) {
-                Icon(Icons.Default.NotificationsNone, null, modifier = Modifier.size(16.dp))
+                Icon(
+                    imageVector = Icons.Default.NotificationsNone,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White
+                )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Follow", fontSize = 13.sp)
+                Text("Follow", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             }
         }
     }

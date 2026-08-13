@@ -46,7 +46,7 @@ fun CampaignsScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     var isGridView by remember { mutableStateOf(true) }
     var showFilterSheet by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf("Eligible") }
+    var selectedCategory by remember { mutableStateOf("Recommended") }
     var showCategoryDropdown by remember { mutableStateOf(false) }
 
     val filterSheetState = rememberModalBottomSheetState()
@@ -66,10 +66,10 @@ fun CampaignsScreen(
                     Surface(
                         modifier = Modifier.clickable { showCategoryDropdown = !showCategoryDropdown },
                         shape = RoundedCornerShape(50),
-                        color = if (showCategoryDropdown) Color(0xFF4B4FE4) else Color(0xFFF3F3FE)
+                        color = Color.Transparent
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val iconRes = when (selectedCategory) {
@@ -81,21 +81,21 @@ fun CampaignsScreen(
                                 painter = painterResource(id = iconRes),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = if (showCategoryDropdown) Color.White else Color(0xFF4B4FE4)
+                                tint = Color(0xFF4B4FE4)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = selectedCategory,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                color = if (showCategoryDropdown) Color.White else Color(0xFF4B4FE4)
+                                color = Color(0xFF4B4FE4)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = if (showCategoryDropdown) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = if (showCategoryDropdown) Color.White else Color(0xFF4B4FE4)
+                                tint = Color(0xFF4B4FE4)
                             )
                         }
                     }
@@ -149,7 +149,7 @@ fun CampaignsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         onClick = { showFilterSheet = true },
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(38.dp),
                         shape = CircleShape,
                         color = Color.White,
                         border = BorderStroke(1.dp, Color(0xFFEBEBF2))
@@ -158,15 +158,15 @@ fun CampaignsScreen(
                             Icon(
                                 imageVector = Icons.Default.Tune,
                                 contentDescription = "Filter",
-                                tint = Color(0xFF8C7BE4),
-                                modifier = Modifier.size(20.dp)
+                                tint = Color(0xFF4B4FE4),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Surface(
                         onClick = { isGridView = !isGridView },
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(38.dp),
                         shape = CircleShape,
                         color = Color.White,
                         border = BorderStroke(1.dp, Color(0xFFEBEBF2))
@@ -175,8 +175,8 @@ fun CampaignsScreen(
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_view_toggle),
                                 contentDescription = "Toggle Layout",
-                                tint = Color(0xFFE55589),
-                                modifier = Modifier.size(20.dp)
+                                tint = Color(0xFF4B4FE4),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -219,7 +219,7 @@ fun CampaignsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         items(campaigns) { campaign ->
                             CampaignGridItem(
@@ -407,33 +407,46 @@ fun CampaignGridItem(
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
-                model = "https://picsum.photos/seed/${campaign.brandName}/50",
+                model = "android.resource://com.example.refluenceds/${R.drawable.refluenced_ag_logo}",
                 contentDescription = null,
                 modifier = Modifier
                     .size(20.dp)
                     .clip(CircleShape)
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text("•", color = Color.Gray)
+            Text("•", color = Color.Gray, fontSize = 12.sp)
             Spacer(modifier = Modifier.width(4.dp))
-            Icon(Icons.Default.Videocam, null, modifier = Modifier.size(16.dp))
-            Text(" 1", fontSize = 12.sp)
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(Icons.Default.AddCircleOutline, null, modifier = Modifier.size(16.dp))
-            Text(" 3", fontSize = 12.sp)
+            
+            if (campaign.title.contains("Schogetten")) {
+                Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(16.dp), tint = Color.DarkGray)
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(Icons.Default.Videocam, null, modifier = Modifier.size(16.dp), tint = Color.DarkGray)
+                Text(" 1 ", fontSize = 12.sp, color = Color.DarkGray, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.AddCircleOutline, null, modifier = Modifier.size(16.dp), tint = Color.DarkGray)
+                Text(" 3", fontSize = 12.sp, color = Color.DarkGray, fontWeight = FontWeight.SemiBold)
+            } else if (campaign.title.contains("FW26") || campaign.title.contains("Lash")) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_social_tiktok),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.DarkGray
+                )
+                Text(" 1", fontSize = 12.sp, color = Color.DarkGray, fontWeight = FontWeight.SemiBold)
+            } else {
+                Icon(Icons.Default.Videocam, null, modifier = Modifier.size(16.dp), tint = Color.DarkGray)
+                Text(" 1 ", fontSize = 12.sp, color = Color.DarkGray, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.AddCircleOutline, null, modifier = Modifier.size(16.dp), tint = Color.DarkGray)
+                Text(" 3", fontSize = 12.sp, color = Color.DarkGray, fontWeight = FontWeight.SemiBold)
+            }
         }
         Spacer(modifier = Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("🇬🇧 London", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(Icons.Default.Stars, null, modifier = Modifier.size(14.dp), tint = Color(0xFFFFD700))
-        }
         Text(
-            campaign.title,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
+            text = campaign.title,
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1D1B36),
             maxLines = 2,
-            lineHeight = 16.sp
+            lineHeight = 17.sp
         )
     }
 }

@@ -683,7 +683,12 @@ fun SocialPostCard(
                     )
                     Spacer(Modifier.width(3.dp))
                     Text(
-                        text = if (index == 0) "428" else if (index == 1) "1264" else "${post.likes}",
+                        text = when (index % 4) {
+                            0 -> "1350"
+                            1 -> "2114"
+                            2 -> "474"
+                            else -> "5014"
+                        },
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -698,7 +703,12 @@ fun SocialPostCard(
                     )
                     Spacer(Modifier.width(3.dp))
                     Text(
-                        text = if (index == 0) "13" else if (index == 1) "16" else "12",
+                        text = when (index % 4) {
+                            0 -> "13"
+                            1 -> "5"
+                            2 -> "13"
+                            else -> "23"
+                        },
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold

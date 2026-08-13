@@ -67,10 +67,10 @@ fun InfluencerProfileScreen(
     fun getRes(resId: Int): String = "android.resource://com.example.refluenceds/$resId"
 
     val campaignFilters = listOf(
-        CampaignContentItem("1", "All", "21 PIECES", getRes(R.drawable.beauty)),
-        CampaignContentItem("2", "Pflegewegweiser", "1 PIECE", getRes(R.drawable.coral_wash)),
-        CampaignContentItem("3", "ewz", "2 PIECES", getRes(R.drawable.phantom_parfum)),
-        CampaignContentItem("4", "Pflegewegweiser", "1 PIECE", getRes(R.drawable.seidenfelt_ugc))
+        CampaignContentItem("1", "All", "68 PIECES", getRes(R.drawable.beauty)),
+        CampaignContentItem("2", "BOSS Parfums", "6 PIECES", getRes(R.drawable.coral_wash)),
+        CampaignContentItem("3", "BOSS Parfums", "9 PIECES", getRes(R.drawable.phantom_parfum)),
+        CampaignContentItem("4", "Jean Paul Ga...", "8 PIECES", getRes(R.drawable.seidenfelt_ugc))
     )
 
     val campaignGridPosts = remember {

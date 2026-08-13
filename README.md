@@ -1,8 +1,12 @@
-# Refluenceds — Influencer Marketing & Campaign Platform (Android)
 
 **Refluenceds** is a modern, high-performance native Android application built with **Jetpack Compose**, **Clean Architecture**, **MVVM**, **Hilt Dependency Injection**, and **Kotlin Coroutines / StateFlow**.
 
 ---
+## 📱 App Demo
+<p align="center">
+  <img src="assets/enhanced_gif.gif" width="320" alt="Refluenceds App Demo"/>
+</p>
+
 
 ## 📱 Application Overview & Key Features
 
