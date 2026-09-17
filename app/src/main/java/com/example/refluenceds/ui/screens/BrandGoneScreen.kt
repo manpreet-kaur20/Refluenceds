@@ -18,12 +18,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.refluenceds.ui.theme.AppTheme
 
 private val BrandBlue   = Color(0xFF3D5AF1)
 private val BrandPurple = Color(0xFF7C3AED)
 private val BrandPink   = Color(0xFFEC4899)
-private val BgLight     = Color(0xFFF0F1FA)
-private val IconRingBg  = Color(0xFFEEF0FF)
 
 @Composable
 fun BrandGoneScreen(
@@ -43,7 +42,7 @@ fun BrandGoneScreen(
 
     Scaffold(
         modifier            = Modifier.fillMaxSize(),
-        containerColor      = BgLight,
+        containerColor      = AppTheme.colors.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar              = {
             Box(
@@ -56,7 +55,7 @@ fun BrandGoneScreen(
                     Icon(
                         imageVector        = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Go back",
-                        tint               = Color(0xFF1A1D2E)
+                        tint               = AppTheme.colors.textPrimary
                     )
                 }
             }
@@ -142,7 +141,7 @@ fun BrandGoneScreen(
             Text(
                 text      = "This brand is no longer available or the link isn't working anymore.",
                 fontSize  = 14.sp,
-                color     = Color(0xFF6B7080),
+                color     = AppTheme.colors.textSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp
             )

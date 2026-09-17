@@ -5,8 +5,9 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class GenericResponseDto(
-    @Json(name = "success") val success: Boolean,
-    @Json(name = "message") val message: String
+    @Json(name = "success") val success: Boolean? = true,
+    @Json(name = "status") val status: Any? = null,
+    @Json(name = "message") val message: String? = null
 )
 
 @JsonClass(generateAdapter = true)

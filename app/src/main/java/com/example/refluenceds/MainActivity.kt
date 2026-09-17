@@ -31,6 +31,18 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var networkMonitor: NetworkMonitor
 
+    private var sessionToast: android.widget.Toast? = null
+
+    private fun showSessionExpiredToast() {
+        sessionToast?.cancel()
+        sessionToast = android.widget.Toast.makeText(
+            this,
+            "Session expired. Please log in again.",
+            android.widget.Toast.LENGTH_SHORT
+        )
+        sessionToast?.show()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -48,7 +60,16 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
 
-            CompositionLocalProvider(LocalContext provides localizedContext) {
+            androidx.compose.runtime.LaunchedEffect(sessionManager) {
+                sessionManager.sessionExpiredEvent.collect {
+                    showSessionExpiredToast()
+                }
+            }
+
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                androidx.activity.compose.LocalActivityResultRegistryOwner provides this@MainActivity
+            ) {
                 RefluencedsTheme(darkTheme = isDarkTheme) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         OfflineBanner(isOffline = !isOnline)

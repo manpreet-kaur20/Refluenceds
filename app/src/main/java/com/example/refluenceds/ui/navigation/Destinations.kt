@@ -96,7 +96,22 @@ sealed interface Destination : NavKey {
     data object EditProfile : Destination
 
     @Serializable
+    data object ConnectInstagram : Destination
+
+    @Serializable
     data object BrandGone : Destination
+
+    @Serializable
+    data object ContactUs : Destination
+
+    @Serializable
+    data object CashEarned : Destination
+
+    @Serializable
+    data object WaysToEarn : Destination
+
+    @Serializable
+    data object UgcVideoInfo : Destination
 
     @Serializable
     data class AcademyDetail(val tutorialId: String = "1") : Destination
@@ -105,5 +120,21 @@ sealed interface Destination : NavKey {
     data class CampaignDetail(val campaignId: String = "1") : Destination
 
     @Serializable
-    data class InfluencerProfile(val creatorName: String = "Lia") : Destination
+    data class InfluencerProfile(
+        val creatorId: String = "",
+        val creatorName: String = ""
+    ) : Destination
+
+    @Serializable
+    data class BrandDetail(
+        val brandId: String = "",
+        val brandName: String = ""
+    ) : Destination
+
+    @Serializable
+    data class BrandReviews(
+        val brandId: String = "",
+        val brandName: String = "",
+        val isCreator: Boolean = false
+    ) : Destination
 }

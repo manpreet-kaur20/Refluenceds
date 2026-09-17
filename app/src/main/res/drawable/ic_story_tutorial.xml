@@ -1,0 +1,56 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+  <path
+      android:pathData="M24,6 C33.94,6 42,14.06 42,24 C42,33.94 33.94,42 24,42 C14.06,42 6,33.94 6,24 C6,19.34 7.78,15.09 10.72,11.91"
+      android:strokeWidth="3.5"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round">
+    <aapt:attr name="android:strokeColor">
+      <gradient
+          android:startX="6"
+          android:startY="6"
+          android:endX="42"
+          android:endY="42"
+          android:type="linear">
+        <item android:offset="0.0" android:color="#FF4B4FE4"/>
+        <item android:offset="1.0" android:color="#FFEC4899"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+  <path
+      android:pathData="M11,6 L11,13 L18,13"
+      android:strokeWidth="3.5"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round">
+    <aapt:attr name="android:strokeColor">
+      <gradient
+          android:startX="11"
+          android:startY="6"
+          android:endX="18"
+          android:endY="13"
+          android:type="linear">
+        <item android:offset="0.0" android:color="#FF4B4FE4"/>
+        <item android:offset="1.0" android:color="#FFEC4899"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+  <!-- Center cards / play -->
+  <path
+      android:pathData="M21,18 L31,24 L21,30 Z">
+    <aapt:attr name="android:fillColor">
+      <gradient
+          android:startX="21"
+          android:startY="18"
+          android:endX="31"
+          android:endY="30"
+          android:type="linear">
+        <item android:offset="0.0" android:color="#FF4B4FE4"/>
+        <item android:offset="1.0" android:color="#FFEC4899"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+</vector>

@@ -1,5 +1,10 @@
 package com.example.refluenceds.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,14 +15,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.*
+import com.example.refluenceds.ui.components.AppPullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -25,18 +34,45 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.refluenceds.R
+import com.example.refluenceds.data.remote.dto.ReferralStatsDto
+import com.example.refluenceds.ui.theme.AppTheme
+import com.example.refluenceds.ui.viewmodel.AuthViewModel
+import com.example.refluenceds.utils.SetStatusBarAppearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun YourReferralsScreen(onBack: () -> Unit) {
+fun YourReferralsScreen(
+    authViewModel: AuthViewModel? = null,
+    onBack: () -> Unit
+) {
+    SetStatusBarAppearance(isLightStatusBars = true)
     var showReferralSheet by remember { mutableStateOf(false) }
 
     val textGradientBrush = Brush.horizontalGradient(
         listOf(Color(0xFF8B5CF6), Color(0xFFEC4899))
     )
 
+    LaunchedEffect(Unit) {
+        authViewModel?.fetchMyReferralCodeAndStats()
+    }
+
+    val stats by authViewModel?.referralStats?.collectAsState() ?: remember { mutableStateOf(null) }
+    val userProfile by authViewModel?.userProfile?.collectAsState() ?: remember { mutableStateOf(null) }
+    val isLoading by authViewModel?.isLoading?.collectAsState() ?: remember { mutableStateOf(false) }
+
+    val effectiveCode = stats?.getEffectiveCode()?.takeIf { it.isNotBlank() }
+        ?: userProfile?.referral?.getEffectiveCode()?.takeIf { it.isNotBlank() }
+        ?: userProfile?.referralCode?.takeIf { it.isNotBlank() }
+        ?: ""
+
+    val effectiveShareUrl = stats?.getEffectiveShareUrl()?.takeIf { it.isNotBlank() }
+        ?: userProfile?.referral?.shareUrl?.takeIf { it.isNotBlank() }
+        ?: if (effectiveCode.isNotBlank()) "http://162.241.68.61/refluenced/invite/$effectiveCode" else ""
+
+    val context = LocalContext.current
+
     Scaffold(
-        containerColor = Color.White,
+        containerColor = AppTheme.colors.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             CenterAlignedTopAppBar(
@@ -45,7 +81,7 @@ fun YourReferralsScreen(onBack: () -> Unit) {
                         text = "Your Referrals",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color(0xFF1D1B36)
+                        color = AppTheme.colors.textPrimary
                     )
                 },
                 navigationIcon = {
@@ -53,7 +89,7 @@ fun YourReferralsScreen(onBack: () -> Unit) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color(0xFF1D1B36)
+                            tint = AppTheme.colors.textPrimary
                         )
                     }
                 },
@@ -81,91 +117,186 @@ fun YourReferralsScreen(onBack: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
+                    containerColor = AppTheme.colors.surface
                 )
             )
         }
     ) { innerPadding ->
-        Column(
+        AppPullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = {
+                authViewModel?.fetchMyReferralCodeAndStats()
+                authViewModel?.fetchUserProfile()
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp)
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Card 1: Not seeing the person you invited?
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFF8F8FD),
-                shape = RoundedCornerShape(16.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-                    Text(
-                        text = "Not seeing the person you invited?",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color(0xFF1D1B36)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "That means they haven't registered with your code yet.",
-                        fontSize = 14.sp,
-                        color = Color(0xFF5A5A72),
-                        lineHeight = 20.sp
-                    )
-                }
-            }
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(28.dp))
-            HorizontalDivider(color = Color(0xFFF0F0F6))
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Stats Bar Row
-            ReferralStatsRow()
-
-            Spacer(modifier = Modifier.height(20.dp))
-            HorizontalDivider(color = Color(0xFFF0F0F6))
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // Empty State Box
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFEEF0FE),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "You don't have any referrals yet",
-                        style = TextStyle(brush = textGradientBrush),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Refer a Friend and Earn! Button
+                // Card 1: Referral Code & Link Card if code is available
+                if (effectiveCode.isNotEmpty()) {
                     Surface(
-                        onClick = { showReferralSheet = true },
-                        shape = RoundedCornerShape(50),
-                        color = Color.White,
-                        shadowElevation = 1.dp
+                        modifier = Modifier.fillMaxWidth(),
+                        color = AppTheme.colors.surface,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, AppTheme.colors.border)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp)
+                        ) {
+                            Text(
+                                text = "Your Referral Code",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = AppTheme.colors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = effectiveCode,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp,
+                                    style = TextStyle(brush = textGradientBrush),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("Referral Code", effectiveCode)
+                                        clipboard.setPrimaryClip(clip)
+                                        Toast.makeText(context, "Code copied: $effectiveCode", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(AppTheme.colors.surfaceVariant)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = "Copy",
+                                        tint = AppTheme.colors.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        val shareText = stats?.getEffectiveShareText()
+                                            ?: "Join me on Refluenced! Use my code: $effectiveCode or link: ${effectiveShareUrl.ifEmpty { effectiveCode }}"
+                                        val sendIntent = Intent().apply {
+                                            action = Intent.ACTION_SEND
+                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                            type = "text/plain"
+                                        }
+                                        val shareIntent = Intent.createChooser(sendIntent, "Share Referral Link").apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(shareIntent)
+                                    },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(AppTheme.colors.primary)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // Card 2: Not seeing the person you invited?
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = AppTheme.colors.surface,
+                    border = BorderStroke(1.dp, AppTheme.colors.border),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
                     ) {
                         Text(
-                            text = "Refer a Friend and Earn!",
-                            color = Color(0xFF4B4FE4),
+                            text = "Not seeing the person you invited?",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
+                            fontSize = 16.sp,
+                            color = AppTheme.colors.textPrimary
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "That means they haven't registered with your code yet.",
+                            fontSize = 14.sp,
+                            color = AppTheme.colors.textSecondary,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+                HorizontalDivider(color = AppTheme.colors.divider)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stats Bar Row
+                ReferralStatsRow(stats = stats)
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = AppTheme.colors.divider)
+                Spacer(modifier = Modifier.height(28.dp))
+
+                val totalInvited = stats?.getEffectiveTotalInvited() ?: 0
+
+                // Empty / Active State Box
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = AppTheme.colors.surfaceVariant,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = if (totalInvited == 0) "You don't have any referrals yet" else "You have $totalInvited referral(s)",
+                            style = TextStyle(brush = textGradientBrush),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Refer a Friend and Earn! Button
+                        Surface(
+                            onClick = { showReferralSheet = true },
+                            shape = RoundedCornerShape(50),
+                            color = AppTheme.colors.surface,
+                            border = BorderStroke(1.dp, AppTheme.colors.border),
+                            shadowElevation = 1.dp
+                        ) {
+                            Text(
+                                text = "Refer a Friend and Earn!",
+                                color = AppTheme.colors.primary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -175,7 +306,10 @@ fun YourReferralsScreen(onBack: () -> Unit) {
     // Refer a Friend and Earn! Bottom Sheet
     if (showReferralSheet) {
         ReferAFriendBottomSheet(
-            onDismissRequest = { /* Do not dismiss on outside click */ },
+            stats = stats,
+            defaultCode = effectiveCode,
+            defaultShareUrl = effectiveShareUrl,
+            onDismissRequest = { showReferralSheet = false },
             onViewReferralsClick = { showReferralSheet = false }
         )
     }
@@ -184,28 +318,39 @@ fun YourReferralsScreen(onBack: () -> Unit) {
 // ── Stats Row Component ───────────────────────────────────────────────────────
 
 @Composable
-fun ReferralStatsRow() {
+fun ReferralStatsRow(stats: ReferralStatsDto? = null) {
+    val totalInvited = stats?.getEffectiveTotalInvited() ?: 0
+    val pending = stats?.getEffectivePending() ?: 0
+    val completed = stats?.getEffectiveCompleted() ?: 0
+    val rewards = stats?.getEffectiveRewards() ?: "0.00 CHF"
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("0", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1D1B36))
+            Text("$totalInvited", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppTheme.colors.textPrimary)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Referrals", fontSize = 12.sp, color = Color(0xFF9E9EB0))
+            Text("Invited", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("0", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1D1B36))
+            Text("$pending", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppTheme.colors.textPrimary)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Completed Referral", fontSize = 12.sp, color = Color(0xFF9E9EB0))
+            Text("Pending", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("EUR 0", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF1D1B36))
+            Text("$completed", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppTheme.colors.textPrimary)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Earned", fontSize = 12.sp, color = Color(0xFF9E9EB0))
+            Text("Completed", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(rewards, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppTheme.colors.textPrimary)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Earned", fontSize = 12.sp, color = AppTheme.colors.textSecondary)
         }
     }
 }
@@ -215,15 +360,22 @@ fun ReferralStatsRow() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReferAFriendBottomSheet(
+    stats: ReferralStatsDto? = null,
+    defaultCode: String = "",
+    defaultShareUrl: String = "",
     onDismissRequest: () -> Unit,
     onViewReferralsClick: () -> Unit
 ) {
-    var referralCode by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val serverCode = stats?.getEffectiveCode()?.takeIf { it.isNotBlank() } ?: defaultCode
+    val shareLink = stats?.getEffectiveShareUrl()?.takeIf { it.isNotBlank() } ?: defaultShareUrl
+    var referralCode by remember(serverCode) { mutableStateOf(serverCode) }
     val textGradientBrush = Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFEC4899)))
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        containerColor = Color.White,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = AppTheme.colors.surface,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Column(
@@ -254,20 +406,20 @@ fun ReferAFriendBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
             Spacer(modifier = Modifier.height(18.dp))
 
             // Earnings breakdown
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("You earn ", fontSize = 15.sp, color = Color(0xFF1D1B36), fontWeight = FontWeight.Medium)
-                Text("20 EUR", fontSize = 16.sp, style = TextStyle(brush = textGradientBrush), fontWeight = FontWeight.Bold)
+                Text("You earn ", fontSize = 15.sp, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Medium)
+                Text(stats?.getEffectiveRewards() ?: "20 EUR", fontSize = 16.sp, style = TextStyle(brush = textGradientBrush), fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Your friend earns ", fontSize = 15.sp, color = Color(0xFF1D1B36), fontWeight = FontWeight.Medium)
-                Text("20 EUR", fontSize = 16.sp, style = TextStyle(brush = textGradientBrush), fontWeight = FontWeight.Bold)
+                Text("Your friend earns ", fontSize = 15.sp, color = AppTheme.colors.textPrimary, fontWeight = FontWeight.Medium)
+                Text("rewards", fontSize = 16.sp, style = TextStyle(brush = textGradientBrush), fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -275,7 +427,7 @@ fun ReferAFriendBottomSheet(
             Text(
                 text = "Your friend must be accepted to a campaign for you both to receive the reward.",
                 fontSize = 12.sp,
-                color = Color(0xFF7A7A90),
+                color = AppTheme.colors.textSecondary,
                 lineHeight = 16.sp
             )
 
@@ -283,14 +435,15 @@ fun ReferAFriendBottomSheet(
 
             // Create your referral code section
             Text(
-                text = "Create your referral code",
-                fontWeight = FontWeight.Bold,
+                text = "Your referral code",
                 fontSize = 14.sp,
-                color = Color(0xFF1D1B36)
+                color = AppTheme.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Referral Code Input & Copy / Share
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -298,33 +451,73 @@ fun ReferAFriendBottomSheet(
                 OutlinedTextField(
                     value = referralCode,
                     onValueChange = { referralCode = it },
-                    placeholder = { Text("Create your code here", color = Color.LightGray, fontSize = 13.sp) },
+                    placeholder = { Text("Your referral code", color = AppTheme.colors.textTertiary, fontSize = 13.sp) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF4B4FE4),
-                        unfocusedBorderColor = Color(0xFFE2E2EC)
+                        focusedTextColor = AppTheme.colors.textPrimary,
+                        unfocusedTextColor = AppTheme.colors.textPrimary,
+                        focusedBorderColor = AppTheme.colors.primary,
+                        unfocusedBorderColor = AppTheme.colors.border,
+                        focusedContainerColor = AppTheme.colors.surfaceVariant,
+                        unfocusedContainerColor = AppTheme.colors.surfaceVariant
                     ),
                     singleLine = true
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Save Button
-                Button(
-                    onClick = { },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                    contentPadding = PaddingValues(0.dp),
+                // Copy / Share Button
+                IconButton(
+                    onClick = {
+                        val shareText = shareLink.ifEmpty { referralCode }
+                        if (shareText.isNotEmpty()) {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Referral Code", shareText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Copied to clipboard!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     modifier = Modifier
-                        .height(50.dp)
-                        .width(100.dp)
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AppTheme.colors.surfaceVariant)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy Referral Code",
+                        tint = AppTheme.colors.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = {
+                        val shareText = stats?.getEffectiveShareText()
+                            ?: if (shareLink.isNotEmpty()) "Join Refluenced using my referral code $referralCode: $shareLink" else "Join Refluenced using my referral code $referralCode"
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                            type = "text/plain"
+                        }
+                        val shareIntent = Intent.createChooser(sendIntent, "Share Referral Link").apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(shareIntent)
+                    },
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
-                            Brush.horizontalGradient(listOf(Color(0xFF986AF6), Color(0xFFDF6FB0))),
-                            shape = RoundedCornerShape(12.dp)
+                            Brush.horizontalGradient(listOf(Color(0xFF986AF6), Color(0xFFDF6FB0)))
                         )
                 ) {
-                    Text("Save", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share",
+                        tint = Color.White
+                    )
                 }
             }
 
@@ -339,18 +532,18 @@ fun ReferAFriendBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "This code can only be edited once.",
+                    text = "Share this code or link with friends to earn rewards.",
                     fontSize = 12.sp,
-                    color = Color(0xFF7A7A90)
+                    color = AppTheme.colors.textSecondary
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
             Spacer(modifier = Modifier.height(18.dp))
 
             // Stats row in bottom sheet
-            ReferralStatsRow()
+            ReferralStatsRow(stats = stats)
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -365,7 +558,7 @@ fun ReferAFriendBottomSheet(
             ) {
                 Text(
                     text = "View Referrals",
-                    color = Color(0xFF4B4FE4),
+                    color = AppTheme.colors.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -373,7 +566,7 @@ fun ReferAFriendBottomSheet(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
-                    tint = Color(0xFF4B4FE4),
+                    tint = AppTheme.colors.primary,
                     modifier = Modifier.size(16.dp)
                 )
             }

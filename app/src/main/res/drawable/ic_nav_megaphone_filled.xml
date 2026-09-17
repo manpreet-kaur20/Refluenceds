@@ -1,17 +1,19 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- Megaphone solid body -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M4.5,8 C3.1,8 2,9.1 2,10.5 V13.5 C2,14.9 3.1,16 4.5,16 H6.2 L19.8,20.2 C20.9,20.5 22,19.7 22,18.5 V5.5 C22,4.3 20.9,3.5 19.8,3.8 L6.2,8 H4.5 Z" />
-    <!-- Megaphone handle -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="2.5"
-        android:strokeLineCap="round"
-        android:pathData="M8.5,16 C8.5,18.5 10.5,20.5 13,20.5" />
+    android:viewportWidth="25"
+    android:viewportHeight="21">
+  <path
+      android:pathData="M1,7.148L23.134,1V17.756L1,12.838V7.148Z"
+      android:fillColor="#4D64FC"
+      android:strokeColor="#4D64FC"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"/>
+  <path
+      android:pathData="M13.57,16.284C13.441,16.752 13.221,17.19 12.922,17.574C12.624,17.957 12.253,18.278 11.83,18.517C11.408,18.757 10.942,18.911 10.46,18.971C9.978,19.031 9.489,18.995 9.02,18.866C8.552,18.737 8.114,18.517 7.73,18.218C7.347,17.92 7.027,17.549 6.787,17.126C6.547,16.704 6.393,16.238 6.333,15.756C6.273,15.274 6.309,14.785 6.438,14.316"
+      android:strokeColor="#4D64FC"
+      android:strokeWidth="2"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"/>
 </vector>

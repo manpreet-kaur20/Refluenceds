@@ -1,5 +1,8 @@
 package com.example.refluenceds.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import com.example.refluenceds.utils.Constants
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import com.example.refluenceds.ui.components.AppPullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,71 +29,204 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import com.example.refluenceds.R
 import com.example.refluenceds.ui.viewmodel.CampaignViewModel
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.text.TextStyle
+import com.example.refluenceds.ui.theme.AppTheme
+import com.example.refluenceds.ui.viewmodel.AuthViewModel
+import com.example.refluenceds.utils.SetStatusBarAppearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EarningsScreen(
     viewModel: CampaignViewModel,
+    authViewModel: AuthViewModel? = null,
+    onNavigateToCampaigns: () -> Unit = {},
     onNavigateToYourCampaigns: () -> Unit = {},
     onNavigateToYourCollection: () -> Unit = {},
     onNavigateToMyBrands: () -> Unit = {},
     onNavigateToAcademy: () -> Unit = {},
     onNavigateToYourReferrals: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToEditProfile: () -> Unit = {}
+    onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToContactUs: () -> Unit = {},
+    onNavigateToCashEarned: () -> Unit = {},
+    onNavigateToWaysToEarn: () -> Unit = {},
+    onNavigateToUgcInfo: () -> Unit = {}
 ) {
+    LaunchedEffect(Unit) {
+        authViewModel?.fetchUserProfile()
+        authViewModel?.fetchMyReferralCodeAndStats()
+        viewModel.fetchMyBadges()
+    }
+
+    val userProfile by authViewModel?.userProfile?.collectAsState() ?: remember { mutableStateOf(null) }
+    val stats by authViewModel?.referralStats?.collectAsState() ?: remember { mutableStateOf(null) }
+
+    val displayName = remember(userProfile) {
+        val u = userProfile
+        val combined = "${u?.firstName.orEmpty()} ${u?.lastName.orEmpty()}".trim()
+        if (combined.isNotEmpty()) combined
+        else if (!u?.fullName.isNullOrBlank()) u!!.fullName!!
+        else "User"
+    }
+
+    val photoUrls = remember(userProfile) {
+        val photos = userProfile?.getAllPhotos() ?: emptyList()
+        if (photos.isEmpty()) {
+            val single = userProfile?.avatar
+            if (!single.isNullOrBlank()) listOf(single) else emptyList()
+        } else {
+            photos
+        }
+    }
+
+    val pagerState = rememberPagerState(pageCount = { photoUrls.size })
+    val listState = rememberLazyListState()
+    val statusBarAlpha by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex > 0) 1f
+            else (listState.firstVisibleItemScrollOffset.toFloat() / 150f).coerceIn(0f, 1f)
+        }
+    }
+    SetStatusBarAppearance(isLightStatusBars = statusBarAlpha > 0.5f)
+
+    val myReferralCode = stats?.getEffectiveCode() ?: userProfile?.referral?.getEffectiveCode() ?: userProfile?.referralCode
+    val hasAppliedReferral = userProfile?.referral?.hasApplied == true || userProfile?.hasAppliedReferral == true
+    val hasSkippedReferral = userProfile?.referral?.hasSkipped == true || userProfile?.hasSkippedReferral == true
     var showReferralCard by remember { mutableStateOf(true) }
+    val shouldShowReferralCard = !hasAppliedReferral && !hasSkippedReferral && showReferralCard
     var showFeedbackSheet by remember { mutableStateOf(false) }
+    var showPodcastDialog by remember { mutableStateOf(false) }
     var feedbackStep by remember { mutableStateOf(0) }
     val textGradientBrush = Brush.horizontalGradient(listOf(Color(0xFF8B5CF6), Color(0xFFEC4899)))
 
+    val isAuthLoading by authViewModel?.isLoading?.collectAsState() ?: remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White
+        containerColor = AppTheme.colors.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding()),
-            contentPadding = PaddingValues(bottom = 32.dp)
+        AppPullToRefreshBox(
+            isRefreshing = isAuthLoading,
+            onRefresh = {
+                authViewModel?.fetchUserProfile()
+                authViewModel?.fetchMyReferralCodeAndStats()
+                viewModel.fetchMyBadges()
+            },
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Header Profile Image with Edit Profile Button
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(340.dp)
-                ) {
-                    AsyncImage(
-                        model = "https://picsum.photos/seed/tomcruise/800/1000",
-                        contentDescription = "Profile Cover",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                    
-                    // Gradient overlay at bottom of header image
+            Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 110.dp)
+            ) {
+                // Header Profile Image Carousel with Edit Profile Button
+                item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp)
-                            .align(Alignment.BottomCenter)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f))
+                            .height(420.dp)
+                    ) {
+                        if (photoUrls.isNotEmpty()) {
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(photoUrls[page])
+                                        .crossfade(true)
+                                        .error(R.drawable.ic_broken_image)
+                                        .fallback(R.drawable.ic_broken_image)
+                                        .build(),
+                                    contentDescription = "Profile Cover",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
                                 )
-                            )
-                    )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(AppTheme.colors.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Profile Cover Placeholder",
+                                    tint = AppTheme.colors.primary,
+                                    modifier = Modifier.size(80.dp)
+                                )
+                            }
+                        }
+                        
+                        // Top gradient overlay so guidelines are visible over bright photos
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(90.dp)
+                                .align(Alignment.TopCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent)
+                                    )
+                                )
+                        )
+
+                        // Gradient overlay at bottom of header image
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(110.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+                                    )
+                                )
+                        )
+
+                        // Top Segment Lines / Image Guide for Multiple Photos
+                        if (photoUrls.size > 1) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.TopCenter)
+                                    .statusBarsPadding()
+                                    .padding(top = 10.dp, start = 16.dp, end = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                            repeat(photoUrls.size) { index ->
+                                val isCurrent = pagerState.currentPage == index
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(3.dp)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            if (isCurrent) Color.White else Color.White.copy(alpha = 0.35f)
+                                        )
+                                )
+                            }
+                        }
+                    }
 
                     // Edit Profile Button at bottom center of cover image
                     Surface(
                         onClick = { onNavigateToEditProfile() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 24.dp),
+                            .padding(bottom = 20.dp),
                         shape = RoundedCornerShape(50),
                         color = Color.Black.copy(alpha = 0.25f),
                         border = BorderStroke(1.5.dp, Color.White)
@@ -125,15 +262,26 @@ fun EarningsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Test",
+                        text = displayName,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1D1B36)
+                        color = AppTheme.colors.textPrimary
                     )
+                    if (!userProfile?.bio.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = userProfile!!.bio!!,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = AppTheme.colors.textSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 40.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 24.dp),
-                        color = Color(0xFFF0F0F6),
+                        color = AppTheme.colors.divider,
                         thickness = 1.dp
                     )
                 }
@@ -150,7 +298,7 @@ fun EarningsScreen(
                         text = "Your socials",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = Color(0xFF1D1B36)
+                        color = AppTheme.colors.textPrimary
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     
@@ -158,7 +306,7 @@ fun EarningsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     ProfileSocialCard(title = "TikTok", action = "Connect", iconRes = R.drawable.ic_social_tiktok)
                     Spacer(modifier = Modifier.height(12.dp))
-                    ProfileSocialCard(title = "UGC", action = "Apply", iconRes = R.drawable.ic_social_video)
+                    ProfileSocialCard(title = "UGC", action = "Apply", iconRes = R.drawable.ic_social_video, onClick = onNavigateToUgcInfo)
                 }
             }
 
@@ -169,7 +317,7 @@ fun EarningsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFFF0F1FE)
+                    color = AppTheme.colors.surfaceVariant
                 ) {
                     Column(
                         modifier = Modifier
@@ -180,7 +328,7 @@ fun EarningsScreen(
                         Text(
                             text = "Your reviews",
                             fontSize = 13.sp,
-                            color = Color(0xFF1D1B36),
+                            color = AppTheme.colors.textPrimary,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.align(Alignment.Start)
                         )
@@ -193,14 +341,14 @@ fun EarningsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Surface(
-                            onClick = { },
+                            onClick = { onNavigateToCampaigns() },
                             shape = RoundedCornerShape(50),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, Color(0xFFE2E2F0))
+                            color = AppTheme.colors.surface,
+                            border = BorderStroke(1.dp, AppTheme.colors.border)
                         ) {
                             Text(
                                 text = "Apply for a campaign",
-                                color = Color(0xFF4B4FE4),
+                                color = AppTheme.colors.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
@@ -218,9 +366,9 @@ fun EarningsScreen(
                         .padding(horizontal = 20.dp, vertical = 6.dp)
                         .clickable { onNavigateToYourReferrals() },
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
+                    color = AppTheme.colors.surface,
                     shadowElevation = 2.dp,
-                    border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+                    border = BorderStroke(1.dp, AppTheme.colors.border)
                 ) {
                     Row(
                         modifier = Modifier
@@ -244,11 +392,20 @@ fun EarningsScreen(
                                 fontSize = 15.sp,
                                 style = TextStyle(brush = textGradientBrush)
                             )
+                            if (!myReferralCode.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Your code: $myReferralCode",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    color = AppTheme.colors.primary
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Every friend that applies for a campaign after signing up with your code earns both of you 20 EUR.",
                                 fontSize = 13.sp,
-                                color = Color(0xFF5A5A72),
+                                color = AppTheme.colors.textSecondary,
                                 lineHeight = 18.sp
                             )
                         }
@@ -256,7 +413,7 @@ fun EarningsScreen(
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = Color(0xFF1D1B36),
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -264,16 +421,16 @@ fun EarningsScreen(
             }
 
             // Were you referred? Card
-            if (showReferralCard) {
+            if (shouldShowReferralCard) {
                 item {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 6.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
+                        color = AppTheme.colors.surface,
                         shadowElevation = 2.dp,
-                        border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+                        border = BorderStroke(1.dp, AppTheme.colors.border)
                     ) {
                         Column(
                             modifier = Modifier
@@ -287,8 +444,8 @@ fun EarningsScreen(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(50),
-                                    color = Color(0xFFFDF4F8),
-                                    border = BorderStroke(1.dp, Color(0xFFF6E6EE))
+                                    color = if (AppTheme.isDark) Color(0xFF351528) else Color(0xFFFDF4F8),
+                                    border = BorderStroke(1.dp, if (AppTheme.isDark) Color(0xFF5A1E40) else Color(0xFFF6E6EE))
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -313,7 +470,7 @@ fun EarningsScreen(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Close",
-                                    tint = Color.Gray,
+                                    tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier
                                         .size(18.dp)
                                         .clickable { showReferralCard = false }
@@ -324,13 +481,13 @@ fun EarningsScreen(
                                 text = "Were you referred?",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = Color(0xFF1D1B36)
+                                color = AppTheme.colors.textPrimary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Add your referrer code for bonus benefits",
                                 fontSize = 13.sp,
-                                color = Color(0xFF5A5A72)
+                                color = AppTheme.colors.textSecondary
                             )
                         }
                     }
@@ -342,11 +499,12 @@ fun EarningsScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 6.dp),
+                        .padding(horizontal = 20.dp, vertical = 6.dp)
+                        .clickable { onNavigateToCashEarned() },
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
+                    color = AppTheme.colors.surface,
                     shadowElevation = 2.dp,
-                    border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+                    border = BorderStroke(1.dp, AppTheme.colors.border)
                 ) {
                     Row(
                         modifier = Modifier
@@ -357,26 +515,26 @@ fun EarningsScreen(
                     ) {
                         Column {
                             Text(
-                                text = "EUR 0,00",
+                                text = "USD 0,00",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1D1B36)
+                                color = AppTheme.colors.textPrimary
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "Cash Earned",
                                 fontSize = 13.sp,
-                                color = Color(0xFF5A5A72)
+                                color = AppTheme.colors.textSecondary
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { }
+                                modifier = Modifier.clickable { onNavigateToWaysToEarn() }
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Info,
                                     contentDescription = null,
-                                    tint = Color(0xFF4B4FE4),
+                                    tint = AppTheme.colors.primary,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -384,7 +542,7 @@ fun EarningsScreen(
                                     text = "Ways to Earn",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF4B4FE4)
+                                    color = AppTheme.colors.primary
                                 )
                             }
                         }
@@ -392,7 +550,7 @@ fun EarningsScreen(
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = Color(0xFF1D1B36),
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -406,13 +564,12 @@ fun EarningsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 6.dp)
                         .clickable {
-                            feedbackStep = 2
-                            showFeedbackSheet = true
+                            onNavigateToContactUs()
                         },
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
+                    color = AppTheme.colors.surface,
                     shadowElevation = 2.dp,
-                    border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+                    border = BorderStroke(1.dp, AppTheme.colors.border)
                 ) {
                     Row(
                         modifier = Modifier
@@ -424,7 +581,7 @@ fun EarningsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Surface(
                                 shape = RoundedCornerShape(50),
-                                color = Color(0xFFE8F8F0)
+                                color = if (AppTheme.isDark) Color(0xFF0E2E1E) else Color(0xFFE8F8F0)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -450,20 +607,20 @@ fun EarningsScreen(
                                 text = "Questions? We're here.",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = Color(0xFF1D1B36)
+                                color = AppTheme.colors.textPrimary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Chat with us to find answers or get support.",
                                 fontSize = 13.sp,
-                                color = Color(0xFF5A5A72)
+                                color = AppTheme.colors.textSecondary
                             )
                         }
                         
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = Color(0xFF1D1B36),
+                            tint = AppTheme.colors.textSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -477,8 +634,8 @@ fun EarningsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
-                    border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+                    color = AppTheme.colors.surface,
+                    border = BorderStroke(1.dp, AppTheme.colors.border)
                 ) {
                     Column {
                         ProfileMenuItem(
@@ -489,21 +646,21 @@ fun EarningsScreen(
                                 showFeedbackSheet = true
                             }
                         )
-                        HorizontalDivider(color = Color(0xFFF4F4F9))
+                        HorizontalDivider(color = AppTheme.colors.divider)
                         ProfileMenuItem(
                             title = "Your campaigns",
                             iconRes = R.drawable.ic_nav_megaphone_outline,
                             onClick = { onNavigateToYourCampaigns() }
                         )
-                        HorizontalDivider(color = Color(0xFFF4F4F9))
+                        HorizontalDivider(color = AppTheme.colors.divider)
                         ProfileMenuItem("Your collection", icon = Icons.Outlined.BookmarkBorder, onClick = { onNavigateToYourCollection() })
-                        HorizontalDivider(color = Color(0xFFF4F4F9))
+                        HorizontalDivider(color = AppTheme.colors.divider)
                         ProfileMenuItem("My Brands", icon = Icons.Outlined.Business, onClick = { onNavigateToMyBrands() })
-                        HorizontalDivider(color = Color(0xFFF4F4F9))
+                        HorizontalDivider(color = AppTheme.colors.divider)
                         ProfileMenuItem("Refluenced Academy", icon = Icons.Outlined.School, onClick = { onNavigateToAcademy() })
-                        HorizontalDivider(color = Color(0xFFF4F4F9))
+                        HorizontalDivider(color = AppTheme.colors.divider)
                         ProfileMenuItem("Your Referrals", iconRes = R.drawable.ic_smile_plus, onClick = { onNavigateToYourReferrals() })
-                        HorizontalDivider(color = Color(0xFFF4F4F9))
+                        HorizontalDivider(color = AppTheme.colors.divider)
                         ProfileMenuItem("Settings", icon = Icons.Outlined.Settings, onClick = { onNavigateToSettings() })
                     }
                 }
@@ -519,12 +676,13 @@ fun EarningsScreen(
                 ) {
                     // Left Column: Podcast Card
                     Surface(
+                        onClick = { showPodcastDialog = true },
                         modifier = Modifier
                             .weight(1f)
                             .height(280.dp),
                         shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+                        color = AppTheme.colors.surface,
+                        border = BorderStroke(1.dp, AppTheme.colors.border)
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
                             AsyncImage(
@@ -581,13 +739,15 @@ fun EarningsScreen(
                         // Instagram Follow Card
                         SocialFollowCard(
                             title = "Follow us on\nInstagram",
-                            iconRes = R.drawable.ic_social_instagram
+                            iconRes = R.drawable.ic_social_instagram,
+                            url = Constants.REFLUENCED_INSTAGRAM_URL
                         )
 
                         // TikTok Follow Card
                         SocialFollowCard(
                             title = "Follow us on\nTikTok",
-                            iconRes = R.drawable.ic_social_tiktok
+                            iconRes = R.drawable.ic_social_tiktok,
+                            url = Constants.REFLUENCED_TIKTOK_URL
                         )
                     }
                 }
@@ -597,202 +757,80 @@ fun EarningsScreen(
             item {
                 Text(
                     text = "App version: 2.2.9 (254)",
-                    color = Color.Gray,
+                    color = AppTheme.colors.textSecondary,
                     fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
+                    textAlign = TextAlign.Start,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 20.dp, bottom = 12.dp)
+                        .padding(top = 15.dp, bottom = 12.dp, start = 20.dp)
                 )
             }
         }
+
+        // Top Status Bar Background Overlay that appears on scroll
+        if (statusBarAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(AppTheme.colors.surface.copy(alpha = statusBarAlpha))
+            )
+        }
+        }
     }
+}
 
     if (showFeedbackSheet) {
         FeedbackBottomSheet(
+            authViewModel = authViewModel,
             onDismissRequest = { showFeedbackSheet = false },
             feedbackStep = feedbackStep,
-            onStepChange = { feedbackStep = it }
+            onStepChange = { feedbackStep = it },
+            onNavigateToContactUs = {
+                showFeedbackSheet = false
+                onNavigateToContactUs()
+            }
         )
+    }
+
+    if (showPodcastDialog) {
+        OurPodcastBottomSheet(onDismiss = { showPodcastDialog = false })
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedbackBottomSheet(
+    authViewModel: AuthViewModel? = null,
     onDismissRequest: () -> Unit,
     feedbackStep: Int,
-    onStepChange: (Int) -> Unit
+    onStepChange: (Int) -> Unit,
+    onNavigateToContactUs: () -> Unit = {}
 ) {
     var feedbackText by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        containerColor = if (feedbackStep == 2) Color.Transparent else Color.White,
-        dragHandle = if (feedbackStep == 2) null else ({
+        containerColor = AppTheme.colors.surface,
+        dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 10.dp)
                     .width(36.dp)
                     .height(4.dp)
-                    .background(Color(0xFFE2E2EC), shape = RoundedCornerShape(2.dp))
+                    .background(AppTheme.colors.border, shape = RoundedCornerShape(2.dp))
             )
-        }),
+        },
         sheetMaxWidth = androidx.compose.ui.unit.Dp.Unspecified
     ) {
-        if (feedbackStep == 2) {
-            // Chat Support View (Screenshot 3) - full screen with status bar padding
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFFEAE0FF), Color(0xFFF8F0FF), Color(0xFFFFFFFF))
-                        )
-                    )
-                    .statusBarsPadding()
-                    .padding(bottom = 40.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Logo icon top-left
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_social_video),
-                        contentDescription = null,
-                        tint = Color(0xFF8B5CF6),
-                        modifier = Modifier.size(28.dp)
-                    )
-                    
-                    // Close button top-right
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color(0x1A1D1B36))
-                            .clickable { onDismissRequest() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = Color(0xFF1D1B36),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    Text(
-                        text = "Hi Test 💜",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1D1B36)
-                    )
-                    Text(
-                        text = "Let's catch up!",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1D1B36)
-                    )
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    // Messages Card
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { },
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
-                        shadowElevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 18.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Messages",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = Color(0xFF1D1B36)
-                            )
-                            Icon(
-                                imageVector = Icons.Outlined.ChatBubbleOutline,
-                                contentDescription = null,
-                                tint = Color(0xFF1D1B36),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Ask a Question Card
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { },
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White,
-                        shadowElevation = 2.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Ask a question",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = Color(0xFF1D1B36)
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(
-                                    model = "https://picsum.photos/seed/support1/60",
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(26.dp)
-                                        .clip(CircleShape)
-                                )
-                                AsyncImage(
-                                    model = "https://picsum.photos/seed/support2/60",
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(26.dp)
-                                        .clip(CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_chat_question),
-                                    contentDescription = null,
-                                    tint = Color.Unspecified,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // Header for Step 0 and Step 1
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-            ) {
+        // Header for Step 0 and Step 1
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -802,21 +840,21 @@ fun FeedbackBottomSheet(
                 ) {
                     Text(
                         text = "Cancel",
-                        color = Color(0xFF4B4FE4),
+                        color = AppTheme.colors.primary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp,
                         modifier = Modifier.clickable { onDismissRequest() }
                     )
                     Text(
                         text = "Feedback",
-                        color = Color(0xFF1D1B36),
+                        color = AppTheme.colors.textPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
                     if (feedbackStep == 1) {
                         Text(
                             text = "Back",
-                            color = Color(0xFF4B4FE4),
+                            color = AppTheme.colors.primary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp,
                             modifier = Modifier.clickable { onStepChange(0) }
@@ -826,7 +864,7 @@ fun FeedbackBottomSheet(
                     }
                 }
 
-                HorizontalDivider(color = Color(0xFFECECF4), thickness = 1.dp)
+                HorizontalDivider(color = AppTheme.colors.divider, thickness = 1.dp)
 
                 if (feedbackStep == 0) {
                     // Step 0: Choose Option (Screenshot 1)
@@ -837,7 +875,7 @@ fun FeedbackBottomSheet(
                     ) {
                         Text(
                             text = "Choose one of the options below",
-                            color = Color(0xFF5A5A72),
+                            color = AppTheme.colors.textSecondary,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -848,8 +886,8 @@ fun FeedbackBottomSheet(
                                 .fillMaxWidth()
                                 .clickable { onStepChange(1) },
                             shape = RoundedCornerShape(16.dp),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, Color(0xFFECECF4))
+                            color = AppTheme.colors.surface,
+                            border = BorderStroke(1.dp, AppTheme.colors.border)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -866,13 +904,13 @@ fun FeedbackBottomSheet(
                                         modifier = Modifier
                                             .size(52.dp)
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xFFF0F1FE)),
+                                            .background(AppTheme.colors.primary.copy(alpha = 0.12f)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             painter = painterResource(id = R.drawable.ic_tools_wrench),
                                             contentDescription = null,
-                                            tint = Color(0xFF4B4FE4),
+                                            tint = AppTheme.colors.primary,
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
@@ -882,20 +920,20 @@ fun FeedbackBottomSheet(
                                             text = "App",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 16.sp,
-                                            color = Color(0xFF1D1B36)
+                                            color = AppTheme.colors.textPrimary
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = "Bugs, errors, sync issues, feature requests...",
                                             fontSize = 13.sp,
-                                            color = Color(0xFF5A5A72)
+                                            color = AppTheme.colors.textSecondary
                                         )
                                     }
                                 }
                                 Icon(
                                     imageVector = Icons.Default.ChevronRight,
                                     contentDescription = null,
-                                    tint = Color(0xFF1D1B36),
+                                    tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -907,10 +945,10 @@ fun FeedbackBottomSheet(
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onStepChange(2) },
+                                .clickable { onNavigateToContactUs() },
                             shape = RoundedCornerShape(16.dp),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, Color(0xFFECECF4))
+                            color = AppTheme.colors.surface,
+                            border = BorderStroke(1.dp, AppTheme.colors.border)
                         ) {
                             Row(
                                 modifier = Modifier
@@ -927,7 +965,7 @@ fun FeedbackBottomSheet(
                                         modifier = Modifier
                                             .size(52.dp)
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(Color(0xFFF0F1FE)),
+                                            .background(AppTheme.colors.primary.copy(alpha = 0.12f)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
@@ -943,20 +981,20 @@ fun FeedbackBottomSheet(
                                             text = "Chat Support",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 16.sp,
-                                            color = Color(0xFF1D1B36)
+                                            color = AppTheme.colors.textPrimary
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = "Missing product, deadline extension, ...",
                                             fontSize = 13.sp,
-                                            color = Color(0xFF5A5A72)
+                                            color = AppTheme.colors.textSecondary
                                         )
                                     }
                                 }
                                 Icon(
                                     imageVector = Icons.Default.ChevronRight,
                                     contentDescription = null,
-                                    tint = Color(0xFF1D1B36),
+                                    tint = AppTheme.colors.textSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -971,7 +1009,7 @@ fun FeedbackBottomSheet(
                     ) {
                         Text(
                             text = "Help us make the app better! Your feedback will be received directly by our developers.",
-                            color = Color(0xFF5A5A72),
+                            color = AppTheme.colors.textSecondary,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -980,21 +1018,48 @@ fun FeedbackBottomSheet(
                         OutlinedTextField(
                             value = feedbackText,
                             onValueChange = { feedbackText = it },
-                            placeholder = { Text("Write your feedback here...", color = Color.Gray, fontSize = 14.sp) },
+                            placeholder = { Text("Write your feedback here...", color = AppTheme.colors.textTertiary, fontSize = 14.sp) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(140.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = Color(0xFFD0D0E0),
-                                focusedBorderColor = Color(0xFF4B4FE4)
+                                focusedTextColor = AppTheme.colors.textPrimary,
+                                unfocusedTextColor = AppTheme.colors.textPrimary,
+                                focusedBorderColor = AppTheme.colors.primary,
+                                unfocusedBorderColor = AppTheme.colors.border,
+                                focusedContainerColor = AppTheme.colors.surfaceVariant,
+                                unfocusedContainerColor = AppTheme.colors.surfaceVariant
                             )
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Button(
-                            onClick = { onDismissRequest() },
+                            onClick = {
+                                if (feedbackText.trim().isEmpty()) {
+                                    android.widget.Toast.makeText(context, "Please enter your feedback", android.widget.Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (authViewModel != null) {
+                                    isSubmitting = true
+                                    authViewModel.submitFeedback(
+                                        feedback = feedbackText.trim(),
+                                        onSuccess = { msg ->
+                                            isSubmitting = false
+                                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                            onDismissRequest()
+                                        },
+                                        onError = { err ->
+                                            isSubmitting = false
+                                            android.widget.Toast.makeText(context, err, android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                } else {
+                                    onDismissRequest()
+                                }
+                            },
+                            enabled = !isSubmitting,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
@@ -1011,12 +1076,20 @@ fun FeedbackBottomSheet(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "Submit",
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
+                                if (isSubmitting) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        modifier = Modifier.size(22.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Submit",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -1024,16 +1097,15 @@ fun FeedbackBottomSheet(
             }
         }
     }
-}
 
 @Composable
-fun ProfileSocialCard(title: String, action: String, iconRes: Int) {
+fun ProfileSocialCard(title: String, action: String, iconRes: Int, onClick: () -> Unit = {}) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = AppTheme.colors.surface,
         shadowElevation = 2.dp,
-        border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+        border = BorderStroke(1.dp, AppTheme.colors.border)
     ) {
         Row(
             modifier = Modifier
@@ -1047,19 +1119,19 @@ fun ProfileSocialCard(title: String, action: String, iconRes: Int) {
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = Color(0xFF1D1B36)
+                    tint = AppTheme.colors.textPrimary
                 )
                 Spacer(modifier = Modifier.width(14.dp))
                 Text(
                     text = title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = Color(0xFF1D1B36)
+                    color = AppTheme.colors.textPrimary
                 )
             }
             
             Button(
-                onClick = { },
+                onClick = onClick,
                 modifier = Modifier
                     .width(104.dp)
                     .height(38.dp),
@@ -1109,14 +1181,14 @@ fun ProfileMenuItem(
                 Icon(
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
-                    tint = Color(0xFF1D1B36),
+                    tint = AppTheme.colors.textPrimary,
                     modifier = Modifier.size(22.dp)
                 )
             } else if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF1D1B36),
+                    tint = AppTheme.colors.textPrimary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -1125,14 +1197,14 @@ fun ProfileMenuItem(
                 text = title,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
-                color = Color(0xFF1D1B36)
+                color = AppTheme.colors.textPrimary
             )
         }
 
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = Color(0xFF1D1B36),
+            tint = AppTheme.colors.textSecondary,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -1140,12 +1212,17 @@ fun ProfileMenuItem(
 
 
 @Composable
-fun SocialFollowCard(title: String, iconRes: Int) {
+fun SocialFollowCard(
+    title: String,
+    iconRes: Int,
+    url: String = ""
+) {
+    val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFF0F0F6))
+        color = AppTheme.colors.surface,
+        border = BorderStroke(1.dp, AppTheme.colors.border)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -1163,24 +1240,160 @@ fun SocialFollowCard(title: String, iconRes: Int) {
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                color = Color(0xFF1D1B36),
+                color = AppTheme.colors.textPrimary,
                 lineHeight = 16.sp
             )
             Spacer(modifier = Modifier.height(10.dp))
             OutlinedButton(
-                onClick = { },
+                onClick = {
+                    if (url.isNotBlank()) {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }
+                },
                 shape = RoundedCornerShape(50),
-                border = BorderStroke(1.dp, Color(0xFF4B4FE4)),
+                border = BorderStroke(1.dp, AppTheme.colors.primary),
                 modifier = Modifier.height(34.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
                 Text(
                     text = "Follow",
-                    color = Color(0xFF4B4FE4),
+                    color = AppTheme.colors.primary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OurPodcastBottomSheet(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = Color.White,
+        dragHandle = null
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+        ) {
+            // Top Cover Image
+            AsyncImage(
+                model = "https://picsum.photos/seed/podcast/600/400",
+                contentDescription = "Our Podcast",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp)
+                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+                contentScale = ContentScale.Crop
+            )
+
+            // Pink Header Title Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFFD8437D))
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "Our Podcast",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "Refluenced - Offline Talks",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Platform Options (Youtube, Spotify, Apple Podcasts)
+            PodcastPlatformOption(
+                title = "Youtube",
+                iconRes = R.drawable.ic_podcast_youtube,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.PODCAST_YOUTUBE_URL)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    onDismiss()
+                }
+            )
+
+            HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+
+            PodcastPlatformOption(
+                title = "Spotify",
+                iconRes = R.drawable.ic_podcast_spotify,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.PODCAST_SPOTIFY_URL)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    onDismiss()
+                }
+            )
+
+            HorizontalDivider(color = Color(0xFFEEEEEE), thickness = 1.dp)
+
+            PodcastPlatformOption(
+                title = "Apple Podcasts",
+                iconRes = R.drawable.ic_podcast_apple,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.PODCAST_APPLE_URL)).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    onDismiss()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun PodcastPlatformOption(
+    title: String,
+    iconRes: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 18.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(id = iconRes),
+            contentDescription = title,
+            tint = Color.Unspecified,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = title,
+            color = Color(0xFF5B61F4),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

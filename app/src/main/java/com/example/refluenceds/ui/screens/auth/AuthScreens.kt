@@ -1,5 +1,12 @@
 package com.example.refluenceds.ui.screens.auth
 
+import java.io.File
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
@@ -54,17 +61,17 @@ fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToSignup: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (isCompleted: Boolean, currentStep: Int) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(validationError) {
         if (validationError != null) {
-            delay(2000)
+            delay(3000)
             validationError = null
         }
     }
@@ -132,19 +139,39 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(26.dp))
 
-            GradientButton(
-                text = "Login",
+            Button(
                 onClick = {
                     when {
                         email.isEmpty() -> validationError = "Email is required"
                         !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> validationError = "Invalid email format"
                         password.isEmpty() -> validationError = "Password is required"
-                        email == "Test@yopmail.com" && password == "Test1234" -> onLoginSuccess()
-                        else -> showErrorDialog = true
+                        else -> {
+                            viewModel.login(
+                                emailInput = email,
+                                passwordInput = password,
+                                onSuccess = onLoginSuccess,
+                                onError = { validationError = it }
+                            )
+                        }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
-            )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B4FE4))
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Login", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -182,49 +209,40 @@ fun LoginScreen(
             )
         }
     }
-
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showErrorDialog = false }) {
-                    Text("Ok")
-                }
-            },
-            title = {
-                Text(
-                    "Account not found or password incorrect",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            shape = RoundedCornerShape(24.dp)
-        )
-    }
 }
 
 @Composable
-fun ValidationToast(message: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun ValidationToast(
+    message: String,
+    onDismiss: () -> Unit,
+    isSuccess: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val bgColor = if (isSuccess) Color(0xFFE8F5E9) else Color(0xFFFDE8E8)
+    val borderColor = if (isSuccess) Color(0xFFA5D6A7) else Color(0xFFF8B4B4)
+    val contentColor = if (isSuccess) Color(0xFF2E7D32) else Color(0xFFC81E1E)
+    val icon = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.ErrorOutline
+
     Surface(
         modifier = modifier.fillMaxWidth().clickable { onDismiss() },
-        color = Color(0xFFFDE8E8),
+        color = bgColor,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color(0xFFF8B4B4))
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.ErrorOutline,
+                imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFFC81E1E),
+                tint = contentColor,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = message,
-                color = Color(0xFFC81E1E),
+                color = contentColor,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -241,12 +259,12 @@ fun SignupScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var showAlreadyExistsDialog by remember { mutableStateOf(false) }
     var validationError by remember { mutableStateOf<String?>(null) }
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(validationError) {
         if (validationError != null) {
-            delay(2000)
+            delay(3000)
             validationError = null
         }
     }
@@ -320,24 +338,42 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            GradientButton(
-                text = "Create Account",
+            Button(
                 onClick = {
                     when {
                         email.isEmpty() -> validationError = "Email is required"
                         !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> validationError = "Invalid email format"
                         password.isEmpty() -> validationError = "Password is required"
-                        password.length < 8 -> validationError = "Password length must be at least 8 characters long"
-                        email == "Test@yopmail.com" -> showAlreadyExistsDialog = true
+                        password.length < 6 -> validationError = "Password length must be at least 6 characters long"
                         else -> {
                             viewModel.email.value = email
                             viewModel.password.value = password
-                            onNavigateToReferral()
+                            viewModel.register(
+                                emailInput = email,
+                                passwordInput = password,
+                                onSuccess = onNavigateToReferral,
+                                onError = { validationError = it }
+                            )
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
-            )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B4FE4))
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Create Account", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -345,9 +381,31 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            SocialButton(text = "Continue with TikTok", iconRes = null)
+            SocialButton(
+                text = "Continue with TikTok",
+                iconRes = null,
+                onClick = {
+                    viewModel.socialLogin(
+                        provider = "tiktok",
+                        providerId = "tiktok_user_${System.currentTimeMillis()}",
+                        onSuccess = { _, _ -> onNavigateToReferral() },
+                        onError = { validationError = it }
+                    )
+                }
+            )
             Spacer(modifier = Modifier.height(12.dp))
-            SocialButton(text = "Continue with Google", iconRes = null)
+            SocialButton(
+                text = "Continue with Google",
+                iconRes = null,
+                onClick = {
+                    viewModel.socialLogin(
+                        provider = "google",
+                        providerId = "google_user_${System.currentTimeMillis()}",
+                        onSuccess = { _, _ -> onNavigateToReferral() },
+                        onError = { validationError = it }
+                    )
+                }
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -373,38 +431,33 @@ fun SignupScreen(
             )
         }
     }
-
-    if (showAlreadyExistsDialog) {
-        AlertDialog(
-            onDismissRequest = { showAlreadyExistsDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showAlreadyExistsDialog = false }) {
-                    Text("Ok")
-                }
-            },
-            title = {
-                Text(
-                    "Account already exists",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            shape = RoundedCornerShape(24.dp)
-        )
-    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ForgotPasswordScreen(onBack: () -> Unit) {
+fun ForgotPasswordScreen(
+    viewModel: AuthViewModel,
+    onBack: () -> Unit
+) {
     var email by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
+    var successToast by remember { mutableStateOf<String?>(null) }
+    val isLoading by viewModel.isLoading.collectAsState()
 
-    LaunchedEffect(validationError) {
-        if (validationError != null) {
-            delay(2000)
+    LaunchedEffect(validationError, successToast) {
+        if (validationError != null || successToast != null) {
+            delay(3000)
             validationError = null
+            successToast = null
         }
     }
+
+    var showResetSheet by remember { mutableStateOf(false) }
+    var resetToken by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().imePadding()) {
         Column(
@@ -423,36 +476,194 @@ fun ForgotPasswordScreen(onBack: () -> Unit) {
                 },
                 label = { Text("Email address") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            GradientButton(
-                text = "Recover my password",
+            Button(
                 onClick = {
                     when {
                         email.isEmpty() -> validationError = "Email is required"
                         !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> validationError = "Invalid email format"
-                        else -> { /* Handle recovery */ }
+                        else -> {
+                            viewModel.forgotPassword(
+                                emailInput = email,
+                                onSuccess = { res ->
+                                    successToast = res.message ?: "Password reset link sent"
+                                    val extractedToken = res.getExtractedToken()
+                                    if (!extractedToken.isNullOrBlank()) {
+                                        resetToken = extractedToken
+                                    }
+                                    val extractedEmail = res.getExtractedEmail()
+                                    if (!extractedEmail.isNullOrBlank()) {
+                                        email = extractedEmail
+                                    }
+                                    showResetSheet = true
+                                },
+                                onError = { err -> validationError = err }
+                            )
+                        }
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(28.dp),
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B4FE4))
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text("Recover my password", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Already have a reset code?",
+                color = Color(0xFF4B4FE4),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                modifier = Modifier.clickable { showResetSheet = true }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Back",
+                text = "Back to Login",
                 color = Color(0xFF5B5BD6),
                 modifier = Modifier.clickable { onBack() }
             )
+        }
+
+        if (showResetSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showResetSheet = false },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 36.dp)
+                ) {
+                    Text(
+                        text = "Reset Password",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color(0xFF1D1B36)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Enter the reset token sent to your email along with your new password.",
+                        fontSize = 13.sp,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = resetToken,
+                        onValueChange = { resetToken = it },
+                        label = { Text("Reset Token") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("New Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            Text(
+                                text = if (newPasswordVisible) "Hide" else "Show",
+                                modifier = Modifier
+                                    .clickable { newPasswordVisible = !newPasswordVisible }
+                                    .padding(end = 16.dp),
+                                color = Color(0xFF5B5BD6),
+                                fontSize = 14.sp
+                            )
+                        },
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("Confirm Password") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            Text(
+                                text = if (confirmPasswordVisible) "Hide" else "Show",
+                                modifier = Modifier
+                                    .clickable { confirmPasswordVisible = !confirmPasswordVisible }
+                                    .padding(end = 16.dp),
+                                color = Color(0xFF5B5BD6),
+                                fontSize = 14.sp
+                            )
+                        },
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Button(
+                        onClick = {
+                            if (resetToken.isEmpty() || newPassword.isEmpty() || newPassword != confirmPassword) {
+                                validationError = if (newPassword != confirmPassword) "Passwords do not match" else "Please verify your fields"
+                            } else {
+                                viewModel.resetPassword(
+                                    token = resetToken,
+                                    emailInput = email,
+                                    pass = newPassword,
+                                    passConfirmation = confirmPassword,
+                                    onSuccess = { msg ->
+                                        showResetSheet = false
+                                        successToast = msg
+                                        onBack()
+                                    },
+                                    onError = { err -> validationError = err }
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(25.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B4FE4))
+                    ) {
+                        Text("Update Password", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
         }
 
         if (validationError != null) {
             ValidationToast(
                 message = validationError!!,
                 onDismiss = { validationError = null },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp, start = 24.dp, end = 24.dp)
+            )
+        }
+
+        if (successToast != null) {
+            ValidationToast(
+                message = successToast!!,
+                onDismiss = { successToast = null },
+                isSuccess = true,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 24.dp, start = 24.dp, end = 24.dp)
@@ -470,13 +681,12 @@ fun ReferralCodeScreen(
     onBack: () -> Unit
 ) {
     var referralCode by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
+    val isLoading by viewModel.isLoading.collectAsState()
     var validationError by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(validationError) {
         if (validationError != null) {
-            delay(2000)
+            delay(3000)
             validationError = null
         }
     }
@@ -524,7 +734,7 @@ fun ReferralCodeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = referralCode,
-                    onValueChange = { if (it.length <= 6) referralCode = it },
+                    onValueChange = { if (it.length <= 15) referralCode = it },
                     placeholder = { Text("Referral code goes here", color = Color.LightGray) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
@@ -563,21 +773,21 @@ fun ReferralCodeScreen(
 
                 Button(
                     onClick = {
-                        scope.launch {
-                            isLoading = true
-                            delay(2000)
-                            isLoading = false
-                            validationError = "Invalid referral code"
-                        }
+                        viewModel.referralCode.value = referralCode
+                        viewModel.confirmReferral(
+                            code = referralCode,
+                            onSuccess = onNext,
+                            onError = { validationError = it }
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    enabled = referralCode.length >= 4 && !isLoading,
+                    enabled = referralCode.length >= 3 && !isLoading,
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (referralCode.length >= 4) Color(0xFF5B5BD6) else Color(0xFFEEEEEE),
-                        contentColor = if (referralCode.length >= 4) Color.White else Color(0xFF9EA3AE),
+                        containerColor = if (referralCode.length >= 3) Color(0xFF5B5BD6) else Color(0xFFEEEEEE),
+                        contentColor = if (referralCode.length >= 3) Color.White else Color(0xFF9EA3AE),
                         disabledContainerColor = Color(0xFFEEEEEE),
                         disabledContentColor = Color(0xFF9EA3AE)
                     )
@@ -596,7 +806,9 @@ fun ReferralCodeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = onSkip,
+                    onClick = {
+                        viewModel.skipReferral(onSuccess = onSkip)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
@@ -630,7 +842,7 @@ fun ReferralCodeScreen(
 fun OnboardingStepScreen(
     title: String,
     step: Int,
-    totalSteps: Int = 6,
+    totalSteps: Int = 7,
     onBack: () -> Unit,
     onNext: () -> Unit,
     nextButtonEnabled: Boolean = true,
@@ -720,10 +932,10 @@ fun FirstNameScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> 
     OnboardingStepScreen(
         title = "First name",
         step = 1,
+        totalSteps = 7,
         onBack = onBack,
         onNext = {
-            viewModel.firstName.value = name
-            onNext()
+            viewModel.submitStep1FirstName(fName = name, onSuccess = onNext)
         },
         nextButtonEnabled = name.isNotEmpty()
     ) {
@@ -752,10 +964,10 @@ fun LastNameScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> U
     OnboardingStepScreen(
         title = "Last name",
         step = 2,
+        totalSteps = 7,
         onBack = onBack,
         onNext = {
-            viewModel.lastName.value = name
-            onNext()
+            viewModel.submitStep2LastName(lName = name, onSuccess = onNext)
         },
         nextButtonEnabled = name.isNotEmpty()
     ) {
@@ -786,14 +998,16 @@ fun GenderScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> Uni
     OnboardingStepScreen(
         title = "Gender",
         step = 3,
+        totalSteps = 7,
         onBack = onBack,
         onNext = {
-            viewModel.gender.value = selectedGender
-            onNext()
+            viewModel.submitStep3Gender(selectedGender = selectedGender, skip = false, onSuccess = onNext)
         },
         nextButtonEnabled = selectedGender.isNotEmpty(),
         showSkip = true,
-        onSkip = onSkip
+        onSkip = {
+            viewModel.submitStep3Gender(selectedGender = "", skip = true, onSuccess = onSkip)
+        }
     ) {
         Text("What gender do you identify as?", modifier = Modifier.align(Alignment.Start))
         Spacer(modifier = Modifier.height(16.dp))
@@ -811,27 +1025,86 @@ fun GenderScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> Uni
 @Composable
 fun CountryScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> Unit) {
     var selectedCountry by remember { mutableStateOf(viewModel.country.value) }
-    val countries = listOf("Switzerland", "Germany", "France", "Italy", "Liechtenstein", "Austria", "United States", "United Kingdom")
+    var searchQuery by remember { mutableStateOf("") }
+    val countriesList by viewModel.countriesList.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchCountries()
+    }
+
+    val filteredCountries = remember(countriesList, searchQuery) {
+        if (searchQuery.isBlank()) {
+            countriesList
+        } else {
+            countriesList.filter {
+                it.name.contains(searchQuery, ignoreCase = true) ||
+                (it.code?.contains(searchQuery, ignoreCase = true) == true) ||
+                (it.iso2?.contains(searchQuery, ignoreCase = true) == true) ||
+                (it.phonecode?.contains(searchQuery, ignoreCase = true) == true)
+            }
+        }
+    }
 
     OnboardingStepScreen(
         title = "Country",
         step = 4,
+        totalSteps = 7,
         onBack = onBack,
         onNext = {
-            viewModel.country.value = selectedCountry
-            onNext()
+            val selectedItem = countriesList.find { it.name.equals(selectedCountry, ignoreCase = true) }
+            val countryId = selectedItem?.id ?: 82
+            viewModel.submitStep4Country(countryId = countryId, countryName = selectedCountry, onSuccess = onNext)
         },
         nextButtonEnabled = selectedCountry.isNotEmpty()
     ) {
         Text("The country you live in", modifier = Modifier.align(Alignment.Start))
         Spacer(modifier = Modifier.height(16.dp))
-        countries.forEach { country ->
-            SelectableOption(
-                text = country,
-                isSelected = selectedCountry == country,
-                onSelect = { selectedCountry = country }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Search country...", color = Color.Gray) },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray)
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.Gray)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF5B5BD6),
+                unfocusedBorderColor = Color(0xFFE0E0E0),
+                focusedContainerColor = Color(0xFFF9F9FB),
+                unfocusedContainerColor = Color(0xFFF9F9FB)
+            ),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (filteredCountries.isEmpty()) {
+            Text(
+                text = "No countries found",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 16.dp)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+        } else {
+            filteredCountries.forEach { countryItem ->
+                val displayName = countryItem.name
+                val emoji = countryItem.emoji?.takeIf { it.isNotBlank() } ?: ""
+                SelectableOption(
+                    text = if (emoji.isNotEmpty()) "$emoji  $displayName" else displayName,
+                    isSelected = selectedCountry.equals(displayName, ignoreCase = true),
+                    onSelect = { selectedCountry = displayName }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
 }
@@ -839,20 +1112,20 @@ fun CountryScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> Un
 @Composable
 fun InterestsScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> Unit) {
     val selectedInterests = remember { mutableStateListOf<String>().apply { addAll(viewModel.selectedInterests.value) } }
-    val industries = listOf(
-        "Beauty", "Fashion", "Gastronomy", "Food & Drink", "Travel", "Sports",
-        "Jewelry", "Technology", "Events", "Lifestyle", "Sustainability", "Home",
-        "Finances", "Cars", "Cooking", "Entertainment", "Family", "Health",
-        "Outdoors", "Pets", "Plant Based"
-    )
+    val industriesList by viewModel.industriesList.collectAsState()
 
     OnboardingStepScreen(
         title = "Industries you're interested in",
         step = 5,
+        totalSteps = 7,
         onBack = onBack,
         onNext = {
-            viewModel.selectedInterests.value = selectedInterests
-            onNext()
+            val selectedIds = industriesList.filter { selectedInterests.contains(it.name) }.map { it.id }
+            viewModel.submitStep5Industries(
+                industryIds = if (selectedIds.isNotEmpty()) selectedIds else listOf(1),
+                industryNames = selectedInterests.toList(),
+                onSuccess = onNext
+            )
         },
         nextButtonEnabled = selectedInterests.isNotEmpty(),
         showSpacer = true,
@@ -879,25 +1152,14 @@ fun InterestsScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> 
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
         ) {
-            items(industries) { industry ->
-                val imageRes = when (industry) {
-                    "Beauty" -> R.drawable.beautiful
-                    "Fashion" -> R.drawable.fashion
-                    "Gastronomy" -> R.drawable.gastronomy
-                    "Food & Drink" -> R.drawable.food_drink
-                    "Travel" -> R.drawable.travel
-                    "Sports" -> R.drawable.sports
-                    "Events" -> R.drawable.events
-                    "Lifestyle" -> R.drawable.lifestyle
-                    "Sustainability" -> R.drawable.sustainability
-                    "Home" -> R.drawable.home
-                    "Finances" -> R.drawable.finances
-                    "Cars" -> R.drawable.cars
-                    else -> R.drawable.app_icon
-                }
+            items(industriesList) { industryItem ->
+                val industry = industryItem.name
+                val imageRes = com.example.refluenceds.utils.IndustryUtils.getIndustryDrawable(industry)
+                val imageUrl = industryItem.icon ?: industryItem.imageUrl ?: industryItem.image
                 IndustryItem(
                     name = industry,
                     imageRes = imageRes,
+                    imageUrl = imageUrl,
                     isSelected = selectedInterests.contains(industry),
                     onToggle = {
                         if (selectedInterests.contains(industry)) {
@@ -912,9 +1174,60 @@ fun InterestsScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> 
     }
 }
 
+private fun processPhotosToFiles(context: Context, photos: List<Any>): List<File> {
+    val files = mutableListOf<File>()
+    for ((index, item) in photos.withIndex()) {
+        try {
+            when (item) {
+                is Uri -> {
+                    val tempFile = File.createTempFile("photo_${index}_", ".jpg", context.cacheDir)
+                    context.contentResolver.openInputStream(item)?.use { input ->
+                        tempFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    if (tempFile.length() > 0) {
+                        files.add(tempFile)
+                    }
+                }
+                is Bitmap -> {
+                    val tempFile = File.createTempFile("photo_${index}_", ".jpg", context.cacheDir)
+                    tempFile.outputStream().use { output ->
+                        item.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                    }
+                    if (tempFile.length() > 0) {
+                        files.add(tempFile)
+                    }
+                }
+                is File -> {
+                    if (item.exists() && item.length() > 0) {
+                        files.add(item)
+                    }
+                }
+                else -> {}
+            }
+        } catch (_: Exception) {}
+    }
+    if (files.isEmpty()) {
+        try {
+            val tempFile = File.createTempFile("default_photo_", ".jpg", context.cacheDir)
+            val bitmap = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val paint = Paint().apply { color = android.graphics.Color.rgb(75, 79, 228) }
+            canvas.drawRect(0f, 0f, 400f, 400f, paint)
+            tempFile.outputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+            }
+            files.add(tempFile)
+        } catch (_: Exception) {}
+    }
+    return files
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilePhotosScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: () -> Unit) {
+    val context = LocalContext.current
     val photos = remember { mutableStateListOf<Any>().apply { addAll(viewModel.profilePhotos.value) } }
     var showBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
@@ -940,10 +1253,12 @@ fun ProfilePhotosScreen(viewModel: AuthViewModel, onNext: () -> Unit, onBack: ()
     OnboardingStepScreen(
         title = "Profile photos",
         step = 6,
+        totalSteps = 7,
         onBack = onBack,
         onNext = {
             viewModel.profilePhotos.value = photos.toList()
-            onNext()
+            val files = processPhotosToFiles(context, photos)
+            viewModel.submitStep6Photos(photoFiles = files, onSuccess = onNext)
         },
         nextButtonEnabled = photos.isNotEmpty(),
         showSpacer = true,
@@ -1064,7 +1379,20 @@ fun BottomSheetOption(text: String, icon: androidx.compose.ui.graphics.vector.Im
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TermsAndConditionsScreen(onAgree: () -> Unit, onBack: () -> Unit) {
+fun TermsAndConditionsScreen(
+    viewModel: AuthViewModel? = null,
+    onAgree: () -> Unit,
+    onBack: () -> Unit
+) {
+    LaunchedEffect(Unit) {
+        viewModel?.fetchTerms()
+    }
+
+    val termsData = viewModel?.termsData?.collectAsState()?.value
+    val termsText = termsData?.termsText ?: "These General Terms and Conditions (\"Terms and Conditions\") apply between users and Refluenced AG (\"Refluenced\"). Users are advertising companies; hereinafter referred to as \"brand\"* or advertising medium; hereinafter \"Influencer\"."
+    val privacyText = termsData?.privacyText ?: "To learn more about how Refluenced collects, uses, shares and protects your personal data, please see the Refluenced privacy policy."
+    val version = termsData?.version ?: "April 29, 2024"
+
     Scaffold(
         containerColor = Color.White,
         topBar = {
@@ -1081,18 +1409,13 @@ fun TermsAndConditionsScreen(onAgree: () -> Unit, onBack: () -> Unit) {
             Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp)) {
                 Text("General Terms and Conditions (GTC) of Refluenced AG", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Version: April 29, 2024", fontSize = 12.sp, color = Color.Gray)
+                Text("Version: $version", fontSize = 12.sp, color = Color.Gray)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("I) General part", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("1. Scope", fontWeight = FontWeight.Bold)
-                Text("(1) These General Terms and Conditions (\"Terms and Conditions\") apply between users and Refluenced AG (\"Refluenced\"). Users are advertising companies; hereinafter referred to as \"brand\"* or advertising medium; hereinafter \"Influencer\".", fontSize = 14.sp)
+                Text(termsText, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("(2) These General Terms and Conditions consist of the general part, the special conditions for influencers and the special conditions for brands. Together with the individual contractual documents, these General Terms and Conditions represent the final agreement (hereinafter referred to as the \"Agreement\"*) between the users and Refluenced.", fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("(3) General terms and conditions of the brand and/or the influencer are hereby explicitly excluded. They only become part of the contract if Refluenced has agreed to their validity in the offer or contract.", fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("(4) Refluenced products are websites, mobile apps, web apps or the platform. By using a product from Refluenced, the user agrees to these terms and conditions. These...", fontSize = 14.sp)
             }
             
             Surface(
@@ -1112,7 +1435,7 @@ fun TermsAndConditionsScreen(onAgree: () -> Unit, onBack: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "To learn more about how Refluenced collects, uses, shares and protects your personal data, please see the Refluenced privacy policy.",
+                        text = privacyText,
                         textAlign = TextAlign.Center,
                         fontSize = 14.sp,
                         color = Color.Gray,
@@ -1120,7 +1443,13 @@ fun TermsAndConditionsScreen(onAgree: () -> Unit, onBack: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     
-                    SwipeToAgreeButton(onAgree = onAgree)
+                    SwipeToAgreeButton(onAgree = {
+                        if (viewModel != null) {
+                            viewModel.submitStep7Terms(onSuccess = onAgree)
+                        } else {
+                            onAgree()
+                        }
+                    })
                 }
             }
         }
@@ -1656,9 +1985,14 @@ fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
 }
 
 @Composable
-fun SocialButton(text: String, iconRes: Int?, modifier: Modifier = Modifier) {
+fun SocialButton(
+    text: String,
+    iconRes: Int?,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
     OutlinedButton(
-        onClick = { },
+        onClick = onClick,
         modifier = modifier.fillMaxWidth().height(56.dp),
         shape = RoundedCornerShape(28.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
@@ -1749,7 +2083,18 @@ fun SelectableOption(text: String, isSelected: Boolean, onSelect: () -> Unit) {
 }
 
 @Composable
-fun IndustryItem(name: String, imageRes: Int, isSelected: Boolean, onToggle: () -> Unit) {
+fun IndustryItem(
+    name: String,
+    imageRes: Int = com.example.refluenceds.utils.IndustryUtils.getIndustryDrawable(name),
+    imageUrl: String? = null,
+    isSelected: Boolean,
+    onToggle: () -> Unit
+) {
+    val context = LocalContext.current
+    val fallbackRes = if (imageRes != 0) imageRes else com.example.refluenceds.utils.IndustryUtils.getIndustryDrawable(name)
+    val hasValidUrl = !imageUrl.isNullOrBlank() &&
+        (imageUrl.startsWith("http://") || imageUrl.startsWith("https://"))
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
@@ -1757,8 +2102,14 @@ fun IndustryItem(name: String, imageRes: Int, isSelected: Boolean, onToggle: () 
             .clickable { onToggle() }
             .then(if (isSelected) Modifier.border(2.5.dp, Color(0xFF4B4FE4), RoundedCornerShape(12.dp)) else Modifier)
     ) {
-        Image(
-            painter = painterResource(id = imageRes),
+        AsyncImage(
+            model = coil.request.ImageRequest.Builder(context)
+                .data(if (hasValidUrl) imageUrl else fallbackRes)
+                .crossfade(true)
+                .placeholder(fallbackRes)
+                .error(fallbackRes)
+                .fallback(fallbackRes)
+                .build(),
             contentDescription = name,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -1862,7 +2213,7 @@ fun LoginScreenPreview() {
                 viewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
                 onNavigateToSignup = {},
                 onNavigateToForgotPassword = {},
-                onLoginSuccess = {}
+                onLoginSuccess = { _, _ -> }
             )
         }
     }

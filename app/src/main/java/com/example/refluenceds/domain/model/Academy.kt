@@ -9,5 +9,6 @@ data class Tutorial(
     val description: String,
     val thumbnailUrl: String,
     val category: String,
-    val duration: String
+    val duration: String,
+    val videoUrl: String = ""
 )

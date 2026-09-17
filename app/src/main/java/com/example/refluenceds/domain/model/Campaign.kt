@@ -12,5 +12,12 @@ data class Campaign(
     val imageUrl: String,
     val status: String,
     val deadline: Long,
-    val category: String
+    val category: String,
+    val brandLogo: String? = null,
+    val applicantsCount: Int = 0,
+    val applicantsBadge: String? = null,
+    val deliverablesSummary: String? = null,
+    val platform: String? = null,
+    val reelCount: Int = 0,
+    val photoCount: Int = 0
 )

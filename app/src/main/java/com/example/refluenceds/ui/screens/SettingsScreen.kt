@@ -1,5 +1,7 @@
 package com.example.refluenceds.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,13 +18,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.example.refluenceds.ui.theme.AppTheme
+import com.example.refluenceds.ui.viewmodel.AuthViewModel
+import com.example.refluenceds.utils.Constants
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    authViewModel: AuthViewModel? = null,
     sessionManager: com.example.refluenceds.data.local.SessionManager? = null,
     onBack: () -> Unit,
     onLogout: () -> Unit,
@@ -30,14 +38,16 @@ fun SettingsScreen(
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToPushNotifications: () -> Unit = {},
     onNavigateToEmailNotifications: () -> Unit = {},
-    onNavigateToEditProfile: () -> Unit = {}
+    onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToContactUs: () -> Unit = {}
 ) {
     var selectedTheme by remember { mutableStateOf(sessionManager?.getTheme() ?: "System") }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Scaffold(
-        containerColor = Color.White,
+        containerColor = AppTheme.colors.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             CenterAlignedTopAppBar(
@@ -46,7 +56,7 @@ fun SettingsScreen(
                         text = "Settings",
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color(0xFF1D1B36)
+                        color = AppTheme.colors.textPrimary
                     )
                 },
                 navigationIcon = {
@@ -54,12 +64,12 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color(0xFF1D1B36)
+                            tint = AppTheme.colors.textPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White
+                    containerColor = AppTheme.colors.background
                 )
             )
         }
@@ -81,7 +91,7 @@ fun SettingsScreen(
                     text = "Theme",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
-                    color = Color(0xFF1D1B36)
+                    color = AppTheme.colors.textPrimary
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -90,8 +100,8 @@ fun SettingsScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(50),
-                    color = Color(0xFFF8F8FC),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEEEF8))
+                    color = AppTheme.colors.inputBackground,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AppTheme.colors.border)
                 ) {
                     Row(
                         modifier = Modifier
@@ -106,6 +116,7 @@ fun SettingsScreen(
                             onClick = {
                                 selectedTheme = "Light"
                                 sessionManager?.setTheme("Light")
+                                authViewModel?.updateTheme("Light")
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -116,6 +127,7 @@ fun SettingsScreen(
                             onClick = {
                                 selectedTheme = "Dark"
                                 sessionManager?.setTheme("Dark")
+                                authViewModel?.updateTheme("Dark")
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -126,6 +138,7 @@ fun SettingsScreen(
                             onClick = {
                                 selectedTheme = "System"
                                 sessionManager?.setTheme("System")
+                                authViewModel?.updateTheme("System")
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -134,40 +147,40 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
 
             // Account Section
             SettingsSectionHeader(icon = Icons.Outlined.Lightbulb, title = "Account")
             SettingsClickableRow(title = "Edit Profile", onClick = { onNavigateToEditProfile() })
-            HorizontalDivider(color = Color(0xFFF6F6FA), modifier = Modifier.padding(horizontal = 20.dp))
+            HorizontalDivider(color = AppTheme.colors.divider, modifier = Modifier.padding(horizontal = 20.dp))
             SettingsClickableRow(title = "Language Preference", trailingText = "English", onClick = { onNavigateToLanguage() })
 
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
 
             // Sign in & Security Section
             SettingsSectionHeader(icon = Icons.Outlined.Lock, title = "Sign in & Security")
             SettingsClickableRow(title = "Change password", onClick = { onNavigateToChangePassword() })
 
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
 
             // Communications Section
             SettingsSectionHeader(icon = Icons.Outlined.ChatBubbleOutline, title = "Communications")
             SettingsClickableRow(title = "Push notifications", onClick = { onNavigateToPushNotifications() })
-            HorizontalDivider(color = Color(0xFFF6F6FA), modifier = Modifier.padding(horizontal = 20.dp))
+            HorizontalDivider(color = AppTheme.colors.divider, modifier = Modifier.padding(horizontal = 20.dp))
             SettingsClickableRow(title = "Email notifications", onClick = { onNavigateToEmailNotifications() })
 
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
 
             // Log out Section
             Spacer(modifier = Modifier.height(16.dp))
             SettingsClickableRow(
                 title = "Log out",
-                titleColor = Color(0xFF1D1B36),
+                titleColor = AppTheme.colors.textPrimary,
                 titleWeight = FontWeight.Bold,
                 onClick = { showLogoutDialog = true }
             )
 
-            HorizontalDivider(color = Color(0xFFF0F0F6))
+            HorizontalDivider(color = AppTheme.colors.divider)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Footer Links Section
@@ -180,26 +193,47 @@ fun SettingsScreen(
                 Text(
                     text = "FAQ",
                     fontSize = 14.sp,
-                    color = Color(0xFF4B4FE4),
-                    modifier = Modifier.clickable { }
+                    color = AppTheme.colors.primary,
+                    modifier = Modifier.clickable {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.FAQ_WEB_URL)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
                 )
                 Text(
                     text = "Privacy Policy",
                     fontSize = 14.sp,
-                    color = Color(0xFF4B4FE4),
-                    modifier = Modifier.clickable { }
+                    color = AppTheme.colors.primary,
+                    modifier = Modifier.clickable {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.PRIVACY_WEB_URL)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
                 )
                 Text(
                     text = "Terms and Conditions",
                     fontSize = 14.sp,
-                    color = Color(0xFF4B4FE4),
-                    modifier = Modifier.clickable { }
+                    color = AppTheme.colors.primary,
+                    modifier = Modifier.clickable {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Constants.TERMS_WEB_URL)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
                 )
                 Text(
                     text = "Contact us",
                     fontSize = 14.sp,
-                    color = Color(0xFF4B4FE4),
-                    modifier = Modifier.clickable { }
+                    color = AppTheme.colors.primary,
+                    modifier = Modifier.clickable { onNavigateToContactUs() }
                 )
                 Text(
                     text = "Delete account",
@@ -217,10 +251,10 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = {
-                Text("Log Out", fontWeight = FontWeight.Bold, color = Color(0xFF1D1B36))
+                Text("Log Out", fontWeight = FontWeight.Bold, color = AppTheme.colors.textPrimary)
             },
             text = {
-                Text("Are you sure you want to log out?", color = Color(0xFF5A5A72), fontSize = 14.sp)
+                Text("Are you sure you want to log out?", color = AppTheme.colors.textSecondary, fontSize = 14.sp)
             },
             confirmButton = {
                 TextButton(
@@ -229,15 +263,15 @@ fun SettingsScreen(
                         onLogout()
                     }
                 ) {
-                    Text("Log Out", color = Color(0xFF4B4FE4), fontWeight = FontWeight.Bold)
+                    Text("Log Out", color = AppTheme.colors.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Cancel", color = AppTheme.colors.textSecondary)
                 }
             },
-            containerColor = Color.White,
+            containerColor = AppTheme.colors.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -260,7 +294,11 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
-                        onLogout()
+                        if (authViewModel != null) {
+                            authViewModel.deleteAccount(onSuccess = onLogout)
+                        } else {
+                            onLogout()
+                        }
                     }
                 ) {
                     Text("Delete", color = Color(0xFFFA5252), fontWeight = FontWeight.Bold)
@@ -290,7 +328,7 @@ fun ThemeOptionPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(50),
-        color = if (isSelected) Color(0xFF4B4FE4) else Color.Transparent,
+        color = if (isSelected) AppTheme.colors.primary else Color.Transparent,
         modifier = modifier
     ) {
         Row(
@@ -301,7 +339,7 @@ fun ThemeOptionPill(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isSelected) Color.White else Color(0xFF4B4FE4),
+                tint = if (isSelected) Color.White else AppTheme.colors.textSecondary,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
@@ -309,7 +347,7 @@ fun ThemeOptionPill(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else Color(0xFF4B4FE4)
+                color = if (isSelected) Color.White else AppTheme.colors.textSecondary
             )
         }
     }
@@ -336,7 +374,7 @@ fun SettingsSectionHeader(icon: ImageVector, title: String) {
             text = title,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF7A7A90)
+            color = AppTheme.colors.textSecondary
         )
     }
 }
@@ -347,7 +385,7 @@ fun SettingsSectionHeader(icon: ImageVector, title: String) {
 fun SettingsClickableRow(
     title: String,
     trailingText: String? = null,
-    titleColor: Color = Color(0xFF1D1B36),
+    titleColor: Color = AppTheme.colors.textPrimary,
     titleWeight: FontWeight = FontWeight.Bold,
     onClick: () -> Unit
 ) {
@@ -371,14 +409,14 @@ fun SettingsClickableRow(
                 Text(
                     text = trailingText,
                     fontSize = 13.sp,
-                    color = Color(0xFF7A7A90)
+                    color = AppTheme.colors.textSecondary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color(0xFF1D1B36),
+                tint = AppTheme.colors.textSecondary,
                 modifier = Modifier.size(20.dp)
             )
         }

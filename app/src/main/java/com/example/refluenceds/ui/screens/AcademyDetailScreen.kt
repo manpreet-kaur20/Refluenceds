@@ -31,54 +31,156 @@ import com.example.refluenceds.domain.model.Tutorial
 import com.example.refluenceds.ui.components.SkeletonItem
 import com.example.refluenceds.ui.viewmodel.CampaignViewModel
 
+import android.content.Intent
+import android.net.Uri
+import androidx.annotation.OptIn
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
+
+import com.example.refluenceds.utils.SetStatusBarAppearance
+
+@OptIn(UnstableApi::class)
 @Composable
 fun AcademyDetailScreen(
     tutorialId: String,
     viewModel: CampaignViewModel,
     onBack: () -> Unit
 ) {
+    SetStatusBarAppearance(isLightStatusBars = false)
+
+    LaunchedEffect(tutorialId) {
+        viewModel.fetchAcademyVideoDetail(tutorialId)
+    }
+
     val tutorials by viewModel.tutorials.collectAsState()
+    val selectedVideo by viewModel.selectedAcademyVideo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     
-    val tutorial = tutorials.find { it.id == tutorialId } ?: tutorials.firstOrNull() ?: Tutorial(
-        id = "1",
-        title = "Content Synchronisation",
-        description = "Learn how to sync your content across platforms.",
-        thumbnailUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.fashion_woman}",
-        category = "Onboarding",
-        duration = "01:00"
-    )
+    val tutorial = selectedVideo?.takeIf { it.id == tutorialId }
+        ?: tutorials.find { it.id == tutorialId }
+        ?: tutorials.firstOrNull()
+        ?: Tutorial(
+            id = tutorialId,
+            title = "Content Synchronisation",
+            description = "Learn how to sync your content across platforms.",
+            thumbnailUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.fashion_woman}",
+            category = "Onboarding",
+            duration = "01:00",
+            videoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+        )
 
     var isBookmarked by remember { mutableStateOf(false) }
-    var isPlaying by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(true) }
+    var isBuffering by remember { mutableStateOf(true) }
+    var videoProgress by remember { mutableFloatStateOf(0f) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ONE
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                isBuffering = (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE)
+            }
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                isBuffering = false
+                isPlaying = false
+                android.util.Log.e("AcademyDetail", "ExoPlayer Error for URL ${tutorial.videoUrl}: ${error.message}", error)
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+        }
+    }
+
+    LaunchedEffect(isPlaying, isBuffering) {
+        if (isPlaying && !isBuffering) {
+            while (true) {
+                val duration = exoPlayer.duration
+                if (duration > 0) {
+                    videoProgress = exoPlayer.currentPosition.toFloat() / duration.toFloat()
+                }
+                kotlinx.coroutines.delay(16)
+            }
+        }
+    }
+
+    DisposableEffect(tutorial.videoUrl) {
+        if (tutorial.videoUrl.isNotBlank()) {
+            isBuffering = true
+            val mediaItem = MediaItem.fromUri(Uri.parse(tutorial.videoUrl))
+            exoPlayer.setMediaItem(mediaItem)
+            exoPlayer.prepare()
+            exoPlayer.playWhenReady = isPlaying
+        } else {
+            isBuffering = false
+        }
+        onDispose {
+            exoPlayer.stop()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    LaunchedEffect(isPlaying) {
+        exoPlayer.playWhenReady = isPlaying
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = Color.Black,
-        contentWindowInsets = WindowInsets.safeDrawing
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .background(Color.Black)
         ) {
             if (isLoading) {
                 AcademyDetailSkeleton(onBack = onBack)
             } else {
-                // Video Frame / Thumbnail Image
-                AsyncImage(
-                    model = tutorial.thumbnailUrl,
-                    contentDescription = tutorial.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                // Background Thumbnail Image (always shown behind player while video loads)
+                if (tutorial.thumbnailUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = tutorial.thumbnailUrl,
+                        contentDescription = tutorial.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                if (tutorial.videoUrl.isNotBlank()) {
+                    AndroidView(
+                        factory = { ctx ->
+                            PlayerView(ctx).apply {
+                                player = exoPlayer
+                                useController = false
+                                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 // Top gradient overlay for readability of back button
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(140.dp)
                         .align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
@@ -91,7 +193,7 @@ fun AcademyDetailScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(240.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
@@ -100,18 +202,38 @@ fun AcademyDetailScreen(
                         )
                 )
 
-                // Center Play Overlay
+                // Center Play / Buffering Overlay
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clickable { isPlaying = !isPlaying },
                     contentAlignment = Alignment.Center
                 ) {
-                    AnimatedVisibility(
-                        visible = !isPlaying,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
+                    if (isBuffering && isPlaying && tutorial.videoUrl.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(24.dp),
+                            color = Color.Black.copy(alpha = 0.65f),
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.5.dp
+                                )
+                                Text(
+                                    text = "Loading video...",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    } else if (!isPlaying) {
                         Surface(
                             shape = CircleShape,
                             color = Color.White.copy(alpha = 0.35f),
@@ -134,6 +256,7 @@ fun AcademyDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 24.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Bottom
@@ -181,7 +304,18 @@ fun AcademyDetailScreen(
                     ) {
                         // Floating Share Button
                         Surface(
-                            onClick = { },
+                            onClick = {
+                                val shareText = "Refluenced Academy: ${tutorial.title}\n${tutorial.videoUrl.ifBlank { tutorial.thumbnailUrl }}"
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, "Share Video").apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(shareIntent)
+                            },
                             shape = CircleShape,
                             color = Color.White,
                             modifier = Modifier.size(44.dp),
@@ -199,7 +333,10 @@ fun AcademyDetailScreen(
 
                         // Floating Bookmark Button
                         Surface(
-                            onClick = { isBookmarked = !isBookmarked },
+                            onClick = {
+                                isBookmarked = !isBookmarked
+                                viewModel.toggleBookmark(tutorial.id)
+                            },
                             shape = CircleShape,
                             color = Color.White,
                             modifier = Modifier.size(44.dp),
@@ -217,11 +354,12 @@ fun AcademyDetailScreen(
                     }
                 }
 
-                // Top Bar Back Button - Moved here to be on top of the fillMaxSize clickable Box
+                // Top Bar Back Button
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        .statusBarsPadding()
                         .padding(horizontal = 8.dp, vertical = 8.dp)
                 ) {
                     Icon(
@@ -229,6 +367,23 @@ fun AcademyDetailScreen(
                         contentDescription = "Back",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Bottom Progress Bar Line
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .height(2.dp)
+                        .background(Color.White.copy(alpha = 0.3f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(videoProgress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(Color.White)
                     )
                 }
             }
@@ -246,6 +401,7 @@ fun AcademyDetailSkeleton(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomStart)
+                .navigationBarsPadding()
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -269,6 +425,7 @@ fun AcademyDetailSkeleton(onBack: () -> Unit) {
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
+                .statusBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
             Icon(

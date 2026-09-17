@@ -1,7 +1,7 @@
 package com.example.refluenceds.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -12,10 +12,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
+import com.example.refluenceds.ui.components.AppPullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,69 +29,53 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.refluenceds.data.remote.dto.BrandItemDto
 import com.example.refluenceds.ui.components.SkeletonItem
-import com.example.refluenceds.ui.theme.GradientStart
+import com.example.refluenceds.ui.theme.AppTheme
+import com.example.refluenceds.ui.viewmodel.CampaignViewModel
+import com.example.refluenceds.utils.SetStatusBarAppearance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyBrandsScreen(onBack: () -> Unit) {
+fun MyBrandsScreen(
+    viewModel: CampaignViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    onBack: () -> Unit,
+    onNavigateToBrandDetail: (String, String) -> Unit = { _, _ -> }
+) {
+    SetStatusBarAppearance(isLightStatusBars = true)
+
     var searchQuery by remember { mutableStateOf("") }
     var showFilterSheet by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("Following") }
-    var isLoading by remember { mutableStateOf(true) }
 
-    val coroutineScope = rememberCoroutineScope()
+    val liveBrands by viewModel.myBrands.collectAsState()
+    val isHomeLoading by viewModel.isHomeLoading.collectAsState()
 
-    LaunchedEffect(selectedFilter) {
-        isLoading = true
-        kotlinx.coroutines.delay(1500)
-        isLoading = false
+    LaunchedEffect(Unit) {
+        viewModel.fetchMyBrands()
     }
 
-    val brands = listOf(
-        BrandData(
-            name = "Refluenced AG",
-            categories = "BEAUTY • FASHION • GASTRONOMY\n• FOOD & DRINK • TRAVEL",
-            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.refluenced_ag_logo}"
-        ),
-        BrandData(
-            name = "Metalli Zug",
-            categories = "BEAUTY • FASHION • GASTRONOMY\n• FOOD & DRINK • JEWELRY",
-            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.metalli_zug_logo}"
-        ),
-        BrandData(
-            name = "Neuwiesen",
-            categories = "BEAUTY • FASHION • GASTRONOMY\n• FOOD & DRINK • SPORTS",
-            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.neuwiesen_logo}"
-        ),
-        BrandData(
-            name = "Filabé of Switzerland ..",
-            categories = "BEAUTY • FASHION • FOOD & DRINK\n• TRAVEL • SPORTS",
-            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.filabe_logo}"
-        ),
-        BrandData(
-            name = "eau&moi",
-            categories = "BEAUTY • FASHION • FOOD & DRINK\n• LIFESTYLE",
-            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.eau_moi_logo}"
-        ),
-        BrandData(
-            name = "Oatsome GmbH",
-            categories = "BEAUTY • FASHION • FOOD & DRINK\n• LIFESTYLE",
-            logoUrl = "android.resource://com.example.refluenceds/${com.example.refluenceds.R.drawable.oatsome_logo}"
-        )
-    )
-
-    val filteredBrands = brands.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    val filteredBrands = remember(liveBrands, searchQuery, selectedFilter) {
+        liveBrands.filter { brand ->
+            val nameMatches = brand.displayName.contains(searchQuery, ignoreCase = true)
+            if (!nameMatches) return@filter false
+            if (selectedFilter == "Following") {
+                brand.isFollowing != false
+            } else {
+                true
+            }
+        }
+    }
 
     Scaffold(
-        containerColor = Color.White,
+        containerColor = AppTheme.colors.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("My Brands", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+                title = { Text("My Brands", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AppTheme.colors.textPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppTheme.colors.textPrimary)
                     }
                 },
                 actions = {
@@ -98,7 +84,7 @@ fun MyBrandsScreen(onBack: () -> Unit) {
                         modifier = Modifier
                             .padding(end = 12.dp)
                             .size(38.dp)
-                            .background(Color(0xFF4B4FE4), CircleShape)
+                            .background(AppTheme.colors.primary, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Tune,
@@ -108,68 +94,86 @@ fun MyBrandsScreen(onBack: () -> Unit) {
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = AppTheme.colors.surface)
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search for brands by their name", color = Color.LightGray, fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
-                shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFE0E0E0),
-                    unfocusedBorderColor = Color(0xFFF1F1F1),
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White
-                ),
-                singleLine = true
-            )
+        AppPullToRefreshBox(
+            isRefreshing = isHomeLoading,
+            onRefresh = { viewModel.fetchMyBrands() },
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Search for brands by their name", color = AppTheme.colors.textTertiary, fontSize = 14.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = AppTheme.colors.textSecondary) },
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = AppTheme.colors.textPrimary,
+                        unfocusedTextColor = AppTheme.colors.textPrimary,
+                        focusedBorderColor = AppTheme.colors.primary,
+                        unfocusedBorderColor = AppTheme.colors.border,
+                        unfocusedContainerColor = AppTheme.colors.surface,
+                        focusedContainerColor = AppTheme.colors.surface
+                    ),
+                    singleLine = true
+                )
 
-            if (isLoading) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(6) {
-                        SkeletonItem(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)))
-                    }
-                }
-            } else if (filteredBrands.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Surface(
-                        modifier = Modifier.padding(24.dp),
-                        color = Color(0xFFF1F1FF),
-                        shape = RoundedCornerShape(12.dp)
+                if (isHomeLoading && liveBrands.isEmpty()) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Looks like there are no brands matching your criteria.",
-                            modifier = Modifier.padding(24.dp),
-                            color = Color(0xFFFA5252).copy(alpha = 0.8f),
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp
-                        )
+                        items(6) {
+                            SkeletonItem(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)))
+                        }
                     }
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(filteredBrands) { brand ->
-                        BrandGridCard(brand)
+                } else if (filteredBrands.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Surface(
+                            modifier = Modifier.padding(24.dp),
+                            color = AppTheme.colors.surfaceVariant,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Looks like there are no brands matching your criteria.",
+                                modifier = Modifier.padding(24.dp),
+                                color = Color(0xFFFA5252).copy(alpha = 0.8f),
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                lineHeight = 22.sp
+                            )
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(filteredBrands) { brand ->
+                            BrandGridCard(
+                                brand = brand,
+                                onBrandClick = {
+                                    onNavigateToBrandDetail(brand.id?.toString() ?: "", brand.displayName)
+                                },
+                                onToggleFollow = {
+                                    brand.id?.let { viewModel.toggleBrandFollow(it) }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -179,7 +183,7 @@ fun MyBrandsScreen(onBack: () -> Unit) {
     if (showFilterSheet) {
         ModalBottomSheet(
             onDismissRequest = { showFilterSheet = false },
-            containerColor = Color.White,
+            containerColor = AppTheme.colors.surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             Column(
@@ -192,6 +196,7 @@ fun MyBrandsScreen(onBack: () -> Unit) {
                     "Filter By",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
+                    color = AppTheme.colors.textPrimary,
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
                 
@@ -200,27 +205,17 @@ fun MyBrandsScreen(onBack: () -> Unit) {
                     icon = Icons.Default.NotificationsNone,
                     isSelected = selectedFilter == "Following",
                     onClick = {
-                        if (selectedFilter != "Following") {
-                            selectedFilter = "Following"
-                        } else {
-                            // Re-trigger skeleton loading even if same filter selected
-                            isLoading = true
-                        }
+                        selectedFilter = "Following"
                         showFilterSheet = false
                     }
                 )
                 
                 FilterOptionRow(
-                    text = "My Interests",
+                    text = "All Brands",
                     icon = Icons.Default.FavoriteBorder,
-                    isSelected = selectedFilter == "My Interests",
+                    isSelected = selectedFilter == "All Brands",
                     onClick = {
-                        if (selectedFilter != "My Interests") {
-                            selectedFilter = "My Interests"
-                        } else {
-                            // Re-trigger skeleton loading even if same filter selected
-                            isLoading = true
-                        }
+                        selectedFilter = "All Brands"
                         showFilterSheet = false
                     }
                 )
@@ -236,7 +231,7 @@ fun FilterOptionRow(
     isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
-    val activeColor = if (isSelected) Color(0xFF4B4FE4) else Color.Gray
+    val activeColor = if (isSelected) AppTheme.colors.primary else AppTheme.colors.textSecondary
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -252,12 +247,20 @@ fun FilterOptionRow(
 }
 
 @Composable
-fun BrandGridCard(brand: BrandData) {
+fun BrandGridCard(
+    brand: BrandItemDto,
+    onBrandClick: () -> Unit = {},
+    onToggleFollow: () -> Unit = {}
+) {
+    val isFollowing = brand.isFollowing ?: false
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onBrandClick() },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F1F1))
+        colors = CardDefaults.cardColors(containerColor = AppTheme.colors.surface),
+        border = BorderStroke(1.dp, AppTheme.colors.border)
     ) {
         Column(
             modifier = Modifier
@@ -266,7 +269,7 @@ fun BrandGridCard(brand: BrandData) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AsyncImage(
-                model = brand.logoUrl,
+                model = brand.effectiveLogo ?: "",
                 contentDescription = null,
                 modifier = Modifier
                     .size(80.dp)
@@ -275,18 +278,19 @@ fun BrandGridCard(brand: BrandData) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = brand.name,
+                text = brand.displayName.ifEmpty { "Brand" },
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
+                color = AppTheme.colors.textPrimary,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = brand.categories,
+                text = brand.effectiveIndustryName.ifEmpty { brand.city.orEmpty() }.ifEmpty { "BEAUTY • FASHION" },
                 fontSize = 8.5.sp,
-                color = Color.Gray,
+                color = AppTheme.colors.textSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 11.5.sp,
                 minLines = 2,
@@ -294,24 +298,44 @@ fun BrandGridCard(brand: BrandData) {
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(12.dp))
+            val isDark = AppTheme.isDark
+            val followContainerColor = if (isFollowing) {
+                if (isDark) Color(0xFF252840) else Color(0xFFEEF2FF)
+            } else {
+                AppTheme.colors.primary
+            }
+            val followContentColor = if (isFollowing) {
+                if (isDark) Color(0xFF818CF8) else Color(0xFF5B61F4)
+            } else {
+                Color.White
+            }
+
             Button(
-                onClick = { },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4B4FE4)),
-                contentPadding = PaddingValues(vertical = 0.dp)
+                onClick = onToggleFollow,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp),
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = followContainerColor,
+                    contentColor = followContentColor
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.NotificationsNone,
+                    imageVector = if (isFollowing) Icons.Filled.NotificationsActive else Icons.Default.NotificationsNone,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color.White
+                    tint = followContentColor
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Follow", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isFollowing) "Following" else "Follow",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
 }
-
-data class BrandData(val name: String, val categories: String, val logoUrl: String)

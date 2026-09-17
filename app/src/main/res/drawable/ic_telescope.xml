@@ -1,20 +1,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- Telescope main tube -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M14.5,4.5 L19.5,9.5 M10.5,8.5 L15.5,13.5 M4,15 L9,20 L16,13 L11,8 Z" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:pathData="M11,13 L7,21 M13,11 L17,21" />
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="16"
+    android:viewportHeight="14">
+  <path
+      android:pathData="M7.3,7.261L3.13,8.15C2.969,8.185 2.799,8.155 2.659,8.066C2.52,7.978 2.42,7.838 2.383,7.676L2.021,6.226C1.978,6.051 2.002,5.867 2.088,5.709C2.175,5.551 2.317,5.431 2.487,5.372L11.597,2.377M9.658,6.757L12.58,6.134M11.304,13L9.209,8.81M4.664,4.656L5.415,7.663M5.907,13L8.001,8.81M11.631,2.84C11.544,2.493 11.599,2.125 11.783,1.818C11.967,1.512 12.266,1.29 12.613,1.204L13.348,1.02C13.522,0.977 13.705,1.004 13.858,1.096C14.012,1.188 14.122,1.337 14.166,1.511L15.188,5.599C15.231,5.773 15.204,5.956 15.112,6.11C15.02,6.263 14.871,6.374 14.697,6.417L13.962,6.601C13.615,6.688 13.248,6.633 12.941,6.449C12.634,6.265 12.413,5.966 12.326,5.619L11.631,2.84ZM9.955,7.603C9.955,8.348 9.35,8.952 8.605,8.952C7.86,8.952 7.256,8.348 7.256,7.603C7.256,6.858 7.86,6.253 8.605,6.253C9.35,6.253 9.955,6.858 9.955,7.603Z"
+      android:strokeColor="#4B4FE4"
+      android:strokeWidth="1.5"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"/>
 </vector>
